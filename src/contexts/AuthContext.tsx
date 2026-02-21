@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 
 export interface User {
@@ -50,17 +50,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  function setAuth(user: User, token: string) {
+  const setAuth = useCallback((user: User, token: string) => {
     localStorage.setItem('token', token);
     setToken(token);
     setUser(user);
-  }
+  }, []);
 
-  function clearAuth() {
+  const clearAuth = useCallback(() => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
-  }
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, setAuth, clearAuth, isLoading }}>
