@@ -61,3 +61,9 @@ export function useVerifyEmail() {
       apiFetch<{ message: string }>('/auth/email/verify', { method: 'POST', body: data }),
   });
 }
+
+export function useLogout() {
+  return useMutation<void, ApiError, void>({
+    mutationFn: () => apiFetch<void>('/auth/logout', { method: 'POST' }),
+  });
+}
