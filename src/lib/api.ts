@@ -1,5 +1,10 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://statstamp-api.test';
 
+export interface ApiError {
+  message: string;
+  errors?: Record<string, string[]>;
+}
+
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
