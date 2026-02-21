@@ -8,8 +8,8 @@ export function AppLogoIcon({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <rect width="32" height="32" rx="6" fill="#000000" />
-      <circle cx="16" cy="16" r="8" fill="white" />
+      <rect width="32" height="32" rx="6" className="fill-black dark:fill-white" />
+      <circle cx="16" cy="16" r="8" className="fill-white dark:fill-black" />
     </svg>
   );
 }
