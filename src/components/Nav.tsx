@@ -15,13 +15,13 @@ export function Nav() {
           href="/login"
           className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
         >
-          Sign in
+          Log In
         </Link>
         <Link
           href="/register"
           className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
         >
-          Sign up
+          Register
         </Link>
       </div>
     </nav>
