@@ -18,10 +18,10 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NewBreakdownButton({ videoId }: { videoId: string }) {
+function NewBreakdownButton({ href }: { href: string }) {
   return (
     <a
-      href={`/videos/${videoId}/breakdowns/new`}
+      href={href}
       className="flex items-center justify-center gap-1.5 w-full rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -49,12 +49,12 @@ export function VideoSidebar({ videoId }: Props) {
       <div className="p-5 space-y-7">
 
         {/* My Breakdowns + New Breakdown button */}
-        {user && (
+        {user ? (
           <section>
             {myBreakdowns.length === 0 ? (
               <>
                 <SectionHeading>My Breakdowns</SectionHeading>
-                <NewBreakdownButton videoId={videoId} />
+                <NewBreakdownButton href={`/videos/${videoId}/breakdowns/new`} />
               </>
             ) : (
               <>
@@ -65,10 +65,14 @@ export function VideoSidebar({ videoId }: Props) {
                   ))}
                 </div>
                 <div className="mt-2">
-                  <NewBreakdownButton videoId={videoId} />
+                  <NewBreakdownButton href={`/videos/${videoId}/breakdowns/new`} />
                 </div>
               </>
             )}
+          </section>
+        ) : (
+          <section>
+            <NewBreakdownButton href="/login" />
           </section>
         )}
 
