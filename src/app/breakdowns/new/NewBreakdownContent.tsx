@@ -212,6 +212,78 @@ function CollectionRow({
 }
 
 // ---------------------------------------------------------------------------
+// Participants sub-components
+// ---------------------------------------------------------------------------
+
+function TeamSlot({ side, onSelect }: { side: 'away' | 'home'; onSelect: () => void }) {
+  const label = side === 'away' ? 'Away Team' : 'Home Team';
+  return (
+    <div className="flex flex-col gap-2 flex-1 min-w-0">
+      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+        {label}
+      </p>
+      <button
+        onClick={onSelect}
+        className="w-full rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 px-4 py-10 text-sm text-zinc-400 dark:text-zinc-500 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+      >
+        Select {label}
+      </button>
+    </div>
+  );
+}
+
+function MatchupDivider() {
+  return (
+    <div className="relative flex flex-col items-center justify-center w-10 shrink-0 self-stretch">
+      <div className="absolute inset-0 flex justify-center">
+        <div className="w-px h-full bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+      <span className="relative z-10 text-2xl font-bold text-zinc-300 dark:text-zinc-600 bg-zinc-50 dark:bg-zinc-950 py-1 select-none">
+        @
+      </span>
+    </div>
+  );
+}
+
+function TeamSelectModal({ side, onClose }: { side: 'away' | 'home'; onClose: () => void }) {
+  const title = `Select ${side === 'away' ? 'Away' : 'Home'} Team`;
+
+  function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={handleBackdrop}
+    >
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+          <button
+            onClick={onClose}
+            className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            aria-label="Close"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 3l10 10M13 3L3 13" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Period row
 // ---------------------------------------------------------------------------
 
@@ -284,6 +356,8 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
   const [collectionId, setCollectionId] = useState<string | null>(null);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [infoModalId, setInfoModalId] = useState<string | null>(null);
+  const [participantMode, setParticipantMode] = useState<'matchup' | 'players'>('matchup');
+  const [teamModalSide, setTeamModalSide] = useState<'away' | 'home' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Mutations
@@ -527,9 +601,34 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
 
             {/* ── Participants ── */}
             <Section title="Participants">
-              <p className="text-sm text-zinc-400 dark:text-zinc-500">
-                Participant configuration coming soon.
-              </p>
+              {/* Mode toggle */}
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 w-fit mb-5">
+                {(['matchup', 'players'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setParticipantMode(mode)}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize ${
+                      participantMode === mode
+                        ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    {mode === 'matchup' ? 'Matchup' : 'Players'}
+                  </button>
+                ))}
+              </div>
+
+              {participantMode === 'matchup' ? (
+                <div className="flex items-start gap-0">
+                  <TeamSlot side="away" onSelect={() => setTeamModalSide('away')} />
+                  <MatchupDivider />
+                  <TeamSlot side="home" onSelect={() => setTeamModalSide('home')} />
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">
+                  Individual player configuration coming soon.
+                </p>
+              )}
             </Section>
           </div>
 
@@ -558,6 +657,14 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
           collectionName={infoCollection.name}
           collectionDescription={infoCollection.description}
           onClose={() => setInfoModalId(null)}
+        />
+      )}
+
+      {/* Team select modal */}
+      {teamModalSide && (
+        <TeamSelectModal
+          side={teamModalSide}
+          onClose={() => setTeamModalSide(null)}
         />
       )}
     </div>
