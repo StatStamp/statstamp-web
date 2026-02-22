@@ -131,33 +131,39 @@ export function Nav() {
 
   return (
     <>
-      {/* ── Desktop sidebar (lg+) ── */}
-      <nav className="hidden lg:flex flex-col w-56 shrink-0 h-screen border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <div className="px-4 py-5 border-b border-zinc-200 dark:border-zinc-800">
+      {/*
+        Single nav element that morphs between layouts:
+        - Mobile (<lg):  flex-row top bar, h-14, full-width, border-bottom
+        - Desktop (lg+): flex-col sidebar, w-56, full-height via self-stretch, border-right
+        No h-screen on the nav itself — height comes from the flex parent on desktop.
+      */}
+      <nav className="shrink-0 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 flex flex-row items-center justify-between h-14 px-4 border-b lg:flex-col lg:items-stretch lg:justify-start lg:w-56 lg:h-auto lg:px-0 lg:border-b-0 lg:border-r">
+
+        {/* Logo — always visible */}
+        <div className="lg:px-4 lg:py-5 lg:border-b lg:border-zinc-200 lg:dark:border-zinc-800 lg:shrink-0">
           <Link href="/" className="block">
             <AppLogo />
           </Link>
         </div>
-        <NavItems />
-      </nav>
 
-      {/* ── Mobile top bar (< lg) ── */}
-      <nav className="lg:hidden flex items-center justify-between h-14 px-4 shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <Link href="/" className="block">
-          <AppLogo />
-        </Link>
+        {/* Desktop nav items — hidden on mobile, fills remaining sidebar height */}
+        <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:overflow-y-auto">
+          <NavItems />
+        </div>
+
+        {/* Mobile hamburger — hidden on desktop */}
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open navigation menu"
-          className="rounded-md p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          className="lg:hidden rounded-md p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
         >
           <HamburgerIcon />
         </button>
       </nav>
 
-      {/* ── Mobile full-screen menu ── */}
+      {/* Mobile full-screen menu overlay — fixed, outside normal flow */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-white dark:bg-zinc-900">
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-zinc-900 lg:hidden">
           {/* Menu header with logo + close button */}
           <div className="flex items-center justify-between h-14 px-4 shrink-0 border-b border-zinc-200 dark:border-zinc-800">
             <Link href="/" onClick={() => setMobileOpen(false)} className="block">
