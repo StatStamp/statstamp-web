@@ -15,12 +15,12 @@ export function VideoContent({ id }: Props) {
   const { data: video, isLoading, isError } = useVideo(id);
 
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
       <Nav />
 
-      <div className="flex flex-1 min-w-0 overflow-hidden">
-        {/* Player area — 2/3 */}
-        <div className="w-2/3 overflow-y-auto p-8 min-w-0">
+      <div className="flex flex-col lg:flex-row flex-1 min-w-0 overflow-y-auto lg:overflow-hidden">
+        {/* Player area — full width on mobile, 2/3 on desktop */}
+        <div className="w-full lg:w-2/3 lg:overflow-y-auto p-8 min-w-0">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-6"

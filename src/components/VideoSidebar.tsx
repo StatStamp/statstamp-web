@@ -45,7 +45,7 @@ export function VideoSidebar({ videoId }: Props) {
   const filteredOtherVideos = otherVideos.filter((v) => v.id !== videoId);
 
   return (
-    <div className="w-1/3 shrink-0 border-l border-zinc-200 dark:border-zinc-800 overflow-y-auto bg-white dark:bg-zinc-900">
+    <div className="w-full lg:w-1/3 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-800 lg:overflow-y-auto bg-white dark:bg-zinc-900">
       <div className="p-5 space-y-7">
 
         {/* My Breakdowns + New Breakdown button */}
@@ -54,7 +54,7 @@ export function VideoSidebar({ videoId }: Props) {
             {myBreakdowns.length === 0 ? (
               <>
                 <SectionHeading>My Breakdowns</SectionHeading>
-                <NewBreakdownButton href={`/videos/${videoId}/breakdowns/new`} />
+                <NewBreakdownButton href={`/breakdowns/new?video=${videoId}`} />
               </>
             ) : (
               <>
@@ -65,7 +65,7 @@ export function VideoSidebar({ videoId }: Props) {
                   ))}
                 </div>
                 <div className="mt-2">
-                  <NewBreakdownButton href={`/videos/${videoId}/breakdowns/new`} />
+                  <NewBreakdownButton href={`/breakdowns/new?video=${videoId}`} />
                 </div>
               </>
             )}
