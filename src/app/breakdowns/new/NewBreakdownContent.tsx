@@ -1,0 +1,565 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { Nav } from '@/components/Nav';
+import { useVideo } from '@/hooks/videos';
+import { useCollections, useCollectionWorkflows, useCollectionEventTypes, type Collection } from '@/hooks/collections';
+import { useCollectionBreakdowns, useCreateBreakdown, useCreateBreakdownPeriod } from '@/hooks/breakdowns';
+import type { ApiError } from '@/lib/api';
+
+interface Props {
+  initialVideoId: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Section wrapper
+// ---------------------------------------------------------------------------
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+      <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</h2>
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collection info modal
+// ---------------------------------------------------------------------------
+
+function CollectionInfoModal({
+  collectionId,
+  collectionName,
+  collectionDescription,
+  onClose,
+}: {
+  collectionId: string;
+  collectionName: string;
+  collectionDescription: string | null;
+  onClose: () => void;
+}) {
+  const { data: workflows = [], isLoading: workflowsLoading } = useCollectionWorkflows(collectionId);
+  const { data: eventTypes = [], isLoading: eventTypesLoading } = useCollectionEventTypes(collectionId);
+  const { data: breakdowns = [], isLoading: breakdownsLoading } = useCollectionBreakdowns(collectionId);
+
+  const userWorkflows = workflows.filter((w) => !w.system_reserved);
+
+  // Close on backdrop click
+  function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={handleBackdrop}
+    >
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="min-w-0 pr-4">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{collectionName}</h3>
+            {collectionDescription && (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{collectionDescription}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            aria-label="Close"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 3l10 10M13 3L3 13" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-6">
+          {/* Workflows */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+              Workflows
+            </p>
+            {workflowsLoading ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading…</p>
+            ) : userWorkflows.length === 0 ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">No workflows.</p>
+            ) : (
+              <ul className="space-y-1">
+                {userWorkflows.map((w) => (
+                  <li key={w.id} className="text-sm text-zinc-700 dark:text-zinc-300">
+                    {w.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Event Types */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+              Event Types
+            </p>
+            {eventTypesLoading ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading…</p>
+            ) : eventTypes.length === 0 ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">No event types.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {eventTypes.map((et) => (
+                  <span
+                    key={et.id}
+                    className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-300"
+                    title={et.name}
+                  >
+                    {et.abbreviation}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Used in */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+              Used In
+            </p>
+            {breakdownsLoading ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading…</p>
+            ) : breakdowns.length === 0 ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">No breakdowns yet.</p>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {breakdowns.map((b) => (
+                  <div key={b.id} className="shrink-0 w-28">
+                    {b.video_thumbnail_url ? (
+                      <img
+                        src={b.video_thumbnail_url}
+                        alt={b.name}
+                        className="w-28 h-16 object-cover rounded-md bg-zinc-200 dark:bg-zinc-700"
+                      />
+                    ) : (
+                      <div className="w-28 h-16 rounded-md bg-zinc-200 dark:bg-zinc-700" />
+                    )}
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 truncate">{b.name}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collection picker row
+// ---------------------------------------------------------------------------
+
+function CollectionRow({
+  collection,
+  onSelect,
+  onInfo,
+}: {
+  collection: Collection;
+  onSelect: () => void;
+  onInfo: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{collection.name}</p>
+        {collection.description && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{collection.description}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-2 ml-4 shrink-0">
+        <button
+          onClick={onInfo}
+          title="Collection details"
+          className="rounded-md p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="7" cy="7" r="6" strokeWidth="1.3" className="stroke-current" />
+            <path d="M7 6.5v4" strokeWidth="1.3" strokeLinecap="round" className="stroke-current" />
+            <circle cx="7" cy="4.5" r="0.6" fill="currentColor" />
+          </svg>
+        </button>
+        <button
+          onClick={onSelect}
+          className="rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+        >
+          Select
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Period row
+// ---------------------------------------------------------------------------
+
+interface Period {
+  minutes: string;
+  seconds: string;
+}
+
+function PeriodRow({
+  index,
+  period,
+  isLast,
+  onChange,
+  onRemove,
+}: {
+  index: number;
+  period: Period;
+  isLast: boolean;
+  onChange: (field: 'minutes' | 'seconds', value: string) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-sm text-zinc-500 dark:text-zinc-400 w-16 shrink-0">Period {index + 1}</span>
+      <input
+        type="number"
+        min="0"
+        value={period.minutes}
+        onChange={(e) => onChange('minutes', e.target.value)}
+        placeholder="0"
+        className="w-16 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-center text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+      />
+      <span className="text-sm text-zinc-500 dark:text-zinc-400">min</span>
+      <input
+        type="number"
+        min="0"
+        max="59"
+        value={period.seconds}
+        onChange={(e) => onChange('seconds', e.target.value)}
+        placeholder="0"
+        className="w-16 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-center text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+      />
+      <span className="text-sm text-zinc-500 dark:text-zinc-400">sec</span>
+      {isLast && (
+        <button
+          onClick={onRemove}
+          title="Remove period"
+          className="ml-1 rounded-md p-1 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 7h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+export function NewBreakdownContent({ initialVideoId }: Props) {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+
+  // Form state
+  const [name, setName] = useState('');
+  const [videoId] = useState(initialVideoId ?? '');
+  const [collectionId, setCollectionId] = useState<string | null>(null);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [infoModalId, setInfoModalId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mutations
+  const createBreakdown = useCreateBreakdown();
+  const createPeriod = useCreateBreakdownPeriod();
+
+  // Data
+  const { data: video, isLoading: videoLoading } = useVideo(videoId);
+  const { data: collections = [], isLoading: collectionsLoading } = useCollections();
+
+  const selectedCollection = collections.find((c) => c.id === collectionId) ?? null;
+  const infoCollection = collections.find((c) => c.id === infoModalId) ?? null;
+
+  // Auth guard
+  const authChecked = useRef(false);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!authChecked.current) {
+      authChecked.current = true;
+      if (!user) {
+        router.replace('/login');
+      }
+    }
+  }, [authLoading, user, router]);
+
+  const isSubmitting = createBreakdown.isPending || createPeriod.isPending;
+
+  async function handleCreate() {
+    if (!name.trim()) {
+      setError('Please enter a name for the breakdown.');
+      return;
+    }
+    if (!collectionId) {
+      setError('Please select a collection.');
+      return;
+    }
+    if (!videoId) {
+      setError('No video selected.');
+      return;
+    }
+
+    setError(null);
+
+    try {
+      const bd = await createBreakdown.mutateAsync({
+        name: name.trim(),
+        video_id: videoId,
+        collection_id: collectionId,
+        is_public: true,
+      });
+
+      for (let i = 0; i < periods.length; i++) {
+        const p = periods[i];
+        const mins = parseInt(p.minutes || '0', 10);
+        const secs = parseInt(p.seconds || '0', 10);
+        const duration = mins * 60 + secs;
+        await createPeriod.mutateAsync({
+          breakdownId: bd.id,
+          order: i,
+          duration_seconds: duration > 0 ? duration : null,
+        });
+      }
+
+      router.push(`/breakdowns/${bd.id}`);
+    } catch (e: unknown) {
+      const apiErr = e as ApiError;
+      setError(apiErr?.message ?? 'Failed to create breakdown.');
+    }
+  }
+
+  function addPeriod() {
+    if (periods.length >= 20) return;
+    setPeriods((prev) => [...prev, { minutes: '', seconds: '' }]);
+  }
+
+  function removePeriod(index: number) {
+    setPeriods((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updatePeriod(index: number, field: 'minutes' | 'seconds', value: string) {
+    setPeriods((prev) => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
+  }
+
+  const canCreate = name.trim().length > 0 && collectionId !== null && videoId.length > 0;
+
+  if (authLoading || (!user && !authChecked.current)) {
+    return null;
+  }
+
+  return (
+    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+      <Nav />
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-8 py-8">
+          {/* Back */}
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-6"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 3L5 8L10 13" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" />
+            </svg>
+            Back
+          </button>
+
+          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">New Breakdown</h1>
+
+          <div className="space-y-4">
+            {/* ── Breakdown Name ── */}
+            <Section title="Breakdown Name">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. My Game Film"
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+              />
+            </Section>
+
+            {/* ── Video ── */}
+            <Section title="Video">
+              {!videoId ? (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">No video selected.</p>
+              ) : videoLoading ? (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading…</p>
+              ) : !video ? (
+                <p className="text-sm text-red-500">Video not found.</p>
+              ) : (
+                <div className="flex gap-4">
+                  {video.thumbnail_url && (
+                    <img
+                      src={video.thumbnail_url}
+                      alt={video.title}
+                      className="w-40 h-24 object-cover rounded-lg shrink-0 bg-zinc-200 dark:bg-zinc-700"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 leading-snug">
+                      {video.title}
+                    </p>
+                    {video.description && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2">
+                        {video.description}
+                      </p>
+                    )}
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
+                      {video.user_name} · Uploaded{' '}
+                      {new Date(video.created_at).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                    <button
+                      disabled
+                      title="Coming soon"
+                      className="mt-3 rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-400 dark:text-zinc-600 cursor-not-allowed opacity-50"
+                    >
+                      Change Video
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Section>
+
+            {/* ── Collection ── */}
+            <Section title="Collection">
+              {selectedCollection ? (
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-green-500 shrink-0">
+                        <path d="M2 7l4 4 6-7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" />
+                      </svg>
+                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                        {selectedCollection.name}
+                      </p>
+                    </div>
+                    {selectedCollection.description && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate ml-5">
+                        {selectedCollection.description}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setCollectionId(null)}
+                    className="ml-4 shrink-0 rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : collectionsLoading ? (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading collections…</p>
+              ) : collections.length === 0 ? (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">No collections available.</p>
+              ) : (
+                <div className="-mx-6 -mb-6 px-6">
+                  {collections.map((c) => (
+                    <CollectionRow
+                      key={c.id}
+                      collection={c}
+                      onSelect={() => setCollectionId(c.id)}
+                      onInfo={() => setInfoModalId(c.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            {/* ── Event Periods ── */}
+            <Section title="Event Periods">
+              {periods.length === 0 ? (
+                <p className="text-sm text-zinc-400 dark:text-zinc-500 mb-4">
+                  No periods added. Periods are optional.
+                </p>
+              ) : (
+                <div className="space-y-3 mb-4">
+                  {periods.map((p, i) => (
+                    <PeriodRow
+                      key={i}
+                      index={i}
+                      period={p}
+                      isLast={i === periods.length - 1}
+                      onChange={(field, value) => updatePeriod(i, field, value)}
+                      onRemove={() => removePeriod(i)}
+                    />
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={addPeriod}
+                disabled={periods.length >= 20}
+                className="flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 1v10M1 6h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+                </svg>
+                {periods.length >= 20 ? 'Maximum 20 periods' : 'Add Period'}
+              </button>
+            </Section>
+
+            {/* ── Participants ── */}
+            <Section title="Participants">
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">
+                Participant configuration coming soon.
+              </p>
+            </Section>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <p className="mt-4 text-sm text-red-500">{error}</p>
+          )}
+
+          {/* Create button */}
+          <div className="mt-6 pb-8">
+            <button
+              onClick={handleCreate}
+              disabled={!canCreate || isSubmitting}
+              className="w-full rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2.5 text-sm font-medium hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+            >
+              {isSubmitting ? 'Creating…' : 'Create Breakdown'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Collection info modal */}
+      {infoModalId && infoCollection && (
+        <CollectionInfoModal
+          collectionId={infoModalId}
+          collectionName={infoCollection.name}
+          collectionDescription={infoCollection.description}
+          onClose={() => setInfoModalId(null)}
+        />
+      )}
+    </div>
+  );
+}

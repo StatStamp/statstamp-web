@@ -54,7 +54,7 @@ export function VideoSidebar({ videoId }: Props) {
             {myBreakdowns.length === 0 ? (
               <>
                 <SectionHeading>My Breakdowns</SectionHeading>
-                <NewBreakdownButton href={`/videos/${videoId}/breakdowns/new`} />
+                <NewBreakdownButton href={`/breakdowns/new?video=${videoId}`} />
               </>
             ) : (
               <>
@@ -65,7 +65,7 @@ export function VideoSidebar({ videoId }: Props) {
                   ))}
                 </div>
                 <div className="mt-2">
-                  <NewBreakdownButton href={`/videos/${videoId}/breakdowns/new`} />
+                  <NewBreakdownButton href={`/breakdowns/new?video=${videoId}`} />
                 </div>
               </>
             )}
