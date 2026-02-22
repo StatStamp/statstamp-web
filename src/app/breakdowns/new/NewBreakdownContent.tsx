@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Nav } from '@/components/Nav';
 import { useVideo } from '@/hooks/videos';
 import { useCollections, useCollectionWorkflows, useCollectionEventTypes, type Collection } from '@/hooks/collections';
 import { useCollectionBreakdowns, useCreateBreakdown, useCreateBreakdownPeriod } from '@/hooks/breakdowns';
+import { useTeams, type Team } from '@/hooks/teams';
 import type { ApiError } from '@/lib/api';
 
 interface Props {
@@ -215,19 +216,59 @@ function CollectionRow({
 // Participants sub-components
 // ---------------------------------------------------------------------------
 
-function TeamSlot({ side, onSelect }: { side: 'away' | 'home'; onSelect: () => void }) {
+function extractTitleSearch(title: string): string {
+  const first = title.split(/\s+(?:vs\.?|@|at)\s+/i)[0] ?? '';
+  return first.replace(/\s*[|\-].*$/, '').trim();
+}
+
+function TeamSlot({
+  side,
+  selectedTeam,
+  onSelect,
+}: {
+  side: 'away' | 'home';
+  selectedTeam: Team | null;
+  onSelect: () => void;
+}) {
   const label = side === 'away' ? 'Away Team' : 'Home Team';
   return (
     <div className="flex flex-col gap-2 flex-1 min-w-0">
       <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
         {label}
       </p>
-      <button
-        onClick={onSelect}
-        className="w-full rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 px-4 py-10 text-sm text-zinc-400 dark:text-zinc-500 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-      >
-        Select {label}
-      </button>
+      {selectedTeam ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onSelect}
+          onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+          className="group relative w-full rounded-xl border border-zinc-200 dark:border-zinc-700 px-4 py-4 cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+        >
+          <span className="absolute top-3 right-3 text-xs text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity">
+            Click to Change
+          </span>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 pr-24 leading-snug">
+            {selectedTeam.name}
+          </p>
+          <div className="flex items-center gap-2 mt-1">
+            {selectedTeam.abbreviation && (
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded px-1.5 py-0.5">
+                {selectedTeam.abbreviation}
+              </span>
+            )}
+            {selectedTeam.league_name && (
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">{selectedTeam.league_name}</span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={onSelect}
+          className="w-full rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 px-4 py-10 text-sm text-zinc-400 dark:text-zinc-500 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+        >
+          Select {label}
+        </button>
+      )}
     </div>
   );
 }
@@ -245,8 +286,42 @@ function MatchupDivider() {
   );
 }
 
-function TeamSelectModal({ side, onClose }: { side: 'away' | 'home'; onClose: () => void }) {
-  const title = `Select ${side === 'away' ? 'Away' : 'Home'} Team`;
+function TeamSelectModal({
+  side,
+  videoTitle,
+  onSelect,
+  onClose,
+}: {
+  side: 'away' | 'home';
+  videoTitle: string;
+  onSelect: (team: Team) => void;
+  onClose: () => void;
+}) {
+  const modalTitle = `Select ${side === 'away' ? 'Away' : 'Home'} Team`;
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const titleHint = useMemo(() => extractTitleSearch(videoTitle), [videoTitle]);
+
+  const { data: allTeams = [] } = useTeams('');
+  const { data: titleTeams = [] } = useTeams(titleHint, { enabled: titleHint.length > 0 });
+  const { data: searchTeams = [], isFetching: searchFetching } = useTeams(debouncedSearch, {
+    enabled: debouncedSearch.length > 0,
+  });
+
+  const displayedTeams = useMemo((): Team[] => {
+    if (debouncedSearch.length > 0) {
+      return searchTeams.slice(0, 10);
+    }
+    const titleIds = new Set(titleTeams.map((t) => t.id));
+    const filler = allTeams.filter((t) => !titleIds.has(t.id));
+    return [...titleTeams, ...filler].slice(0, 10);
+  }, [debouncedSearch, searchTeams, titleTeams, allTeams]);
 
   function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose();
@@ -266,8 +341,9 @@ function TeamSelectModal({ side, onClose }: { side: 'away' | 'home'; onClose: ()
       onClick={handleBackdrop}
     >
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
-          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{modalTitle}</h3>
           <button
             onClick={onClose}
             className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -277,6 +353,48 @@ function TeamSelectModal({ side, onClose }: { side: 'away' | 'home'; onClose: ()
               <path d="M3 3l10 10M13 3L3 13" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
             </svg>
           </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 pb-6 pt-4 space-y-3">
+          {/* Search input */}
+          <input
+            type="text"
+            placeholder="Search teams…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            autoFocus
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+          />
+
+          {/* Team rows */}
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            {searchFetching && debouncedSearch.length > 0 ? (
+              <p className="px-4 py-6 text-sm text-zinc-400 dark:text-zinc-500 text-center">Searching…</p>
+            ) : displayedTeams.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-zinc-400 dark:text-zinc-500 text-center">No teams found.</p>
+            ) : (
+              displayedTeams.map((team) => (
+                <button
+                  key={team.id}
+                  onClick={() => onSelect(team)}
+                  className="w-full flex flex-col px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{team.name}</span>
+                  {team.league_name && (
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{team.league_name}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+
+          {/* Footer hint */}
+          {debouncedSearch.length > 0 && searchTeams.length >= 10 && (
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center">
+              Showing top 10 — refine your search to narrow results.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -358,6 +476,8 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
   const [infoModalId, setInfoModalId] = useState<string | null>(null);
   const [participantMode, setParticipantMode] = useState<'matchup' | 'players'>('matchup');
   const [teamModalSide, setTeamModalSide] = useState<'away' | 'home' | null>(null);
+  const [awayTeam, setAwayTeam] = useState<Team | null>(null);
+  const [homeTeam, setHomeTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Mutations
@@ -620,9 +740,9 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
 
               {participantMode === 'matchup' ? (
                 <div className="flex items-start gap-0">
-                  <TeamSlot side="away" onSelect={() => setTeamModalSide('away')} />
+                  <TeamSlot side="away" selectedTeam={awayTeam} onSelect={() => setTeamModalSide('away')} />
                   <MatchupDivider />
-                  <TeamSlot side="home" onSelect={() => setTeamModalSide('home')} />
+                  <TeamSlot side="home" selectedTeam={homeTeam} onSelect={() => setTeamModalSide('home')} />
                 </div>
               ) : (
                 <p className="text-sm text-zinc-400 dark:text-zinc-500">
@@ -664,6 +784,12 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
       {teamModalSide && (
         <TeamSelectModal
           side={teamModalSide}
+          videoTitle={video?.title ?? ''}
+          onSelect={(team) => {
+            if (teamModalSide === 'away') setAwayTeam(team);
+            else setHomeTeam(team);
+            setTeamModalSide(null);
+          }}
           onClose={() => setTeamModalSide(null)}
         />
       )}

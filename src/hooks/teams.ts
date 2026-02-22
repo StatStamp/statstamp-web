@@ -26,7 +26,7 @@ interface PaginatedResponse<T> {
   data: T[];
 }
 
-export function useTeams(search?: string) {
+export function useTeams(search?: string, options?: { enabled?: boolean }) {
   const qs = search ? `?search=${encodeURIComponent(search)}` : '';
   return useQuery<Team[]>({
     queryKey: ['teams', search ?? ''],
@@ -34,6 +34,7 @@ export function useTeams(search?: string) {
       const res = await apiFetch<PaginatedResponse<Team>>(`/teams${qs}`);
       return res.data;
     },
+    enabled: options?.enabled ?? true,
   });
 }
 
