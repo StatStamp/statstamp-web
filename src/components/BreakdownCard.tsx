@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Breakdown } from '@/hooks/breakdowns';
 
 interface Props {
@@ -13,7 +14,10 @@ export function BreakdownCard({ breakdown, showOwner = false }: Props) {
   });
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5">
+    <Link
+      href={`/breakdowns/${breakdown.id}`}
+      className="block rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+    >
       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
         {breakdown.name}
       </p>
@@ -34,6 +38,6 @@ export function BreakdownCard({ breakdown, showOwner = false }: Props) {
           </>
         )}
       </div>
-    </div>
+    </Link>
   );
 }

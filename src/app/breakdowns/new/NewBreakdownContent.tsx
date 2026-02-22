@@ -398,7 +398,7 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. My Game Film"
+                placeholder="e.g. My Game Breakdown"
                 className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
               />
             </Section>
@@ -430,7 +430,7 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                       </p>
                     )}
                     <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-                      {video.user_name} · Uploaded{' '}
+                      {video.user_name} Uploaded{' '}
                       {new Date(video.created_at).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
@@ -497,7 +497,7 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
             <Section title="Event Periods">
               {periods.length === 0 ? (
                 <p className="text-sm text-zinc-400 dark:text-zinc-500 mb-4">
-                  No periods added. Periods are optional.
+                  No periods added (optional).
                 </p>
               ) : (
                 <div className="space-y-3 mb-4">
