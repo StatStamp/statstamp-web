@@ -8,7 +8,7 @@ export default function Home() {
   const { data: videos, isLoading, isError } = usePublicVideos();
 
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
       <Nav />
       <main className="flex-1 overflow-y-auto">
         <div className="p-8">

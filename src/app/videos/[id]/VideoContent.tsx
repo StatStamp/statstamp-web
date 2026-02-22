@@ -15,7 +15,7 @@ export function VideoContent({ id }: Props) {
   const { data: video, isLoading, isError } = useVideo(id);
 
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
       <Nav />
 
       <div className="flex flex-1 min-w-0 overflow-hidden">

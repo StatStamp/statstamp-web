@@ -374,7 +374,7 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
   }
 
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
       <Nav />
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-8 py-8">
