@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
+import { VideoSidebar } from '@/components/VideoSidebar';
 import { useVideo } from '@/hooks/videos';
 
 interface Props {
@@ -16,8 +17,10 @@ export function VideoContent({ id }: Props) {
   return (
     <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
       <Nav />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8">
+
+      <div className="flex flex-1 min-w-0 overflow-hidden">
+        {/* Player area — 2/3 */}
+        <div className="w-2/3 overflow-y-auto p-8 min-w-0">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-6"
@@ -37,17 +40,18 @@ export function VideoContent({ id }: Props) {
           )}
 
           {video && (
-            <div className="flex gap-8">
-              <div className="w-2/3 min-w-0">
-                <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4 leading-snug">
-                  {video.title}
-                </h1>
-                <YouTubePlayer videoId={video.source_identifier} />
-              </div>
-            </div>
+            <>
+              <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4 leading-snug">
+                {video.title}
+              </h1>
+              <YouTubePlayer videoId={video.source_identifier} />
+            </>
           )}
         </div>
-      </main>
+
+        {/* Sidebar — 1/3 */}
+        <VideoSidebar videoId={id} />
+      </div>
     </div>
   );
 }
