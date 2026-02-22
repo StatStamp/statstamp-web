@@ -137,7 +137,7 @@ export function Nav() {
         - Desktop (lg+): flex-col sidebar, w-56, full-height via self-stretch, border-right
         No h-screen on the nav itself — height comes from the flex parent on desktop.
       */}
-      <nav className="shrink-0 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 flex flex-row items-center justify-between h-14 px-4 border-b lg:flex-col lg:items-stretch lg:justify-start lg:w-56 lg:h-auto lg:px-0 lg:border-b-0 lg:border-r">
+      <nav className="shrink-0 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 flex flex-row items-center justify-between h-14 px-4 border-b lg:flex-col lg:items-stretch lg:justify-start lg:w-56 lg:h-full lg:px-0 lg:border-b-0 lg:border-r">
 
         {/* Logo — always visible */}
         <div className="lg:px-4 lg:py-5 lg:border-b lg:border-zinc-200 lg:dark:border-zinc-800 lg:shrink-0">
