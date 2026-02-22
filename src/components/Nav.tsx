@@ -1,11 +1,31 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLogout } from '@/hooks/auth';
 import { AppLogo } from './AppLogo';
 
-const navLinkClass =
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
+  return (
+    <Link
+      href={href}
+      className={[
+        'flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800',
+      ].join(' ')}
+    >
+      {children}
+    </Link>
+  );
+}
+
+const buttonLinkClass =
   'flex items-center px-3 py-2 rounded-md text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors';
 
 export function Nav() {
@@ -24,7 +44,9 @@ export function Nav() {
         </Link>
       </div>
 
-      <div className="flex-1" />
+      <div className="flex-1 p-3 space-y-1">
+        <NavLink href="/">Explore</NavLink>
+      </div>
 
       <div className="p-3 space-y-1 border-t border-zinc-200 dark:border-zinc-800">
         {user ? (
@@ -35,19 +57,15 @@ export function Nav() {
             <button
               onClick={handleLogout}
               disabled={logout.isPending}
-              className={navLinkClass + ' w-full text-left'}
+              className={buttonLinkClass + ' w-full text-left'}
             >
               {logout.isPending ? 'Logging out…' : 'Log Out'}
             </button>
           </>
         ) : (
           <>
-            <Link href="/login" className={navLinkClass}>
-              Log In
-            </Link>
-            <Link href="/register" className={navLinkClass}>
-              Register
-            </Link>
+            <NavLink href="/login">Log In</NavLink>
+            <NavLink href="/register">Register</NavLink>
           </>
         )}
       </div>
