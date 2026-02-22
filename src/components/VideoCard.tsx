@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import type { Video } from '@/hooks/videos';
 
 function BreakdownIcon() {
@@ -45,38 +46,41 @@ interface Props {
 
 export function VideoCard({ video }: Props) {
   return (
-    <div className="w-56 shrink-0 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
-      <div className="aspect-video bg-zinc-100 dark:bg-zinc-800 relative">
-        {video.thumbnail_url ? (
-          <Image
-            src={video.thumbnail_url}
-            alt={video.title}
-            fill
-            className="object-cover"
-            sizes="224px"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <BreakdownIcon />
-          </div>
-        )}
-      </div>
+    <Link href={`/videos/${video.id}`} className="group w-56 shrink-0 block">
+      <div className="rounded-xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm transition-all duration-150 group-hover:shadow-md group-hover:scale-[1.02]">
+        <div className="aspect-video bg-zinc-100 dark:bg-zinc-800 relative">
+          {video.thumbnail_url ? (
+            <Image
+              src={video.thumbnail_url}
+              alt={video.title}
+              fill
+              className="object-cover"
+              sizes="224px"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <BreakdownIcon />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-150" />
+        </div>
 
-      <div className="p-3 space-y-2">
-        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-2">
-          {video.title}
-        </p>
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-            <BreakdownIcon />
-            {video.breakdowns_count}
-          </span>
-          <span className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400 min-w-0">
-            <UserIcon />
-            <span className="truncate">{video.user_name}</span>
-          </span>
+        <div className="p-3 space-y-2">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 leading-snug line-clamp-2">
+            {video.title}
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <BreakdownIcon />
+              {video.breakdowns_count}
+            </span>
+            <span className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400 min-w-0">
+              <UserIcon />
+              <span className="truncate">{video.user_name}</span>
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

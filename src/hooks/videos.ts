@@ -32,3 +32,10 @@ export function usePublicVideos() {
     },
   });
 }
+
+export function useVideo(id: string) {
+  return useQuery<Video>({
+    queryKey: ['videos', id],
+    queryFn: () => apiFetch<{ data: Video }>(`/videos/${id}`).then((r) => r.data),
+  });
+}
