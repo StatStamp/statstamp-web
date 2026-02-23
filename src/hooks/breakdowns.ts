@@ -23,6 +23,25 @@ export interface BreakdownPeriod {
   updated_at: string;
 }
 
+export interface BreakdownTeam {
+  id: string;
+  breakdown_id: string;
+  team_id: string;
+  home_away: 'home' | 'away' | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BreakdownPlayer {
+  id: string;
+  breakdown_id: string;
+  player_id: string;
+  breakdown_team_id: string | null;
+  jersey_number: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface PaginatedResponse<T> {
   data: T[];
 }
@@ -67,6 +86,26 @@ export function useCreateBreakdownPeriod() {
   return useMutation<BreakdownPeriod, ApiError, { breakdownId: string; order: number; duration_seconds: number | null }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownPeriod }>(`/breakdowns/${breakdownId}/periods`, {
+        method: 'POST',
+        body: data,
+      }).then((r) => r.data),
+  });
+}
+
+export function useCreateBreakdownTeam() {
+  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away' }>({
+    mutationFn: ({ breakdownId, ...data }) =>
+      apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams`, {
+        method: 'POST',
+        body: data,
+      }).then((r) => r.data),
+  });
+}
+
+export function useCreateBreakdownPlayer() {
+  return useMutation<BreakdownPlayer, ApiError, { breakdownId: string; player_id: string; breakdown_team_id: string | null; jersey_number: string | null }>({
+    mutationFn: ({ breakdownId, ...data }) =>
+      apiFetch<{ data: BreakdownPlayer }>(`/breakdowns/${breakdownId}/players`, {
         method: 'POST',
         body: data,
       }).then((r) => r.data),

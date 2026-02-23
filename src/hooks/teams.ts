@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { apiFetch, ApiError } from '@/lib/api';
 
 export interface Team {
   id: string;
@@ -18,6 +18,7 @@ export interface Player {
   name: string;
   number: string | null;
   is_public: boolean;
+  default_teams?: { id: string; name: string }[];
   created_at: string;
   updated_at: string;
 }
@@ -46,5 +47,12 @@ export function useTeamDefaultPlayers(teamId: string | null) {
       return res.data;
     },
     enabled: teamId !== null,
+  });
+}
+
+export function useAttachTeamDefaultPlayer() {
+  return useMutation<void, ApiError, { teamId: string; player_id: string }>({
+    mutationFn: ({ teamId, player_id }) =>
+      apiFetch(`/teams/${teamId}/default-players`, { method: 'POST', body: { player_id } }).then(() => undefined),
   });
 }
