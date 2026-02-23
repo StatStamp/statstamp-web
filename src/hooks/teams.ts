@@ -56,3 +56,10 @@ export function useAttachTeamDefaultPlayer() {
       apiFetch(`/teams/${teamId}/default-players`, { method: 'POST', body: { player_id } }).then(() => undefined),
   });
 }
+
+export function useDetachTeamDefaultPlayer() {
+  return useMutation<void, ApiError, { teamId: string; playerId: string }>({
+    mutationFn: ({ teamId, playerId }) =>
+      apiFetch(`/teams/${teamId}/default-players/${playerId}`, { method: 'DELETE' }).then(() => undefined),
+  });
+}

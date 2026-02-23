@@ -7,7 +7,7 @@ import { Nav } from '@/components/Nav';
 import { useVideo } from '@/hooks/videos';
 import { useCollections, useCollectionWorkflows, useCollectionEventTypes, type Collection } from '@/hooks/collections';
 import { useCollectionBreakdowns, useCreateBreakdown, useCreateBreakdownPeriod, useCreateBreakdownTeam, useCreateBreakdownPlayer } from '@/hooks/breakdowns';
-import { useTeams, useTeamDefaultPlayers, useAttachTeamDefaultPlayer, type Team, type Player } from '@/hooks/teams';
+import { useTeams, useTeamDefaultPlayers, useAttachTeamDefaultPlayer, useDetachTeamDefaultPlayer, type Team, type Player } from '@/hooks/teams';
 import { usePlayers, useCreatePlayer } from '@/hooks/players';
 import type { ApiError } from '@/lib/api';
 
@@ -381,19 +381,109 @@ function RosterRow({
   );
 }
 
-// Roster section shown below a filled TeamSlot
+// Confirmation modal shown before removing a player from a roster
+function RemovePlayerModal({
+  entry,
+  teamName,
+  userOwnsTeam,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  entry: RosterEntry;
+  teamName: string | null;
+  userOwnsTeam: boolean;
+  onConfirm: (removeFromDefault: boolean) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [removeFromDefault, setRemoveFromDefault] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onCancel();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  const playerName = entry.name.trim() || (entry.kind === 'new' ? 'New Player' : 'this player');
+  const jerseyDisplay = entry.jerseyNumber.trim() ? ` · #${entry.jerseyNumber.trim()}` : '';
+  const showDefaultOption = userOwnsTeam && entry.kind === 'existing' && teamName !== null;
+
+  function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onCancel();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={handleBackdrop}
+    >
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-sm w-full">
+        <div className="px-6 py-5 space-y-3">
+          <div>
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Remove Player?</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+              {playerName}{jerseyDisplay}
+            </p>
+          </div>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">
+            You can add this player again if you change your mind.
+          </p>
+          {showDefaultOption && (
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={removeFromDefault}
+                onChange={(e) => setRemoveFromDefault(e.target.checked)}
+                className="mt-0.5 rounded border-zinc-300 dark:border-zinc-600"
+              />
+              <span className="text-sm text-zinc-600 dark:text-zinc-300">
+                Also remove from <span className="font-medium">{teamName}</span>&apos;s default roster
+              </span>
+            </label>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-3 px-6 pb-5">
+          <button
+            onClick={onCancel}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(removeFromDefault)}
+            disabled={isLoading}
+            className="rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-white transition-colors"
+          >
+            {isLoading ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Roster section shown below a filled TeamSlot (or standalone for Players mode)
 function TeamRoster({
   roster,
   onChange,
   userOwnsTeam,
   userId,
+  team = null,
+  showHeader = true,
 }: {
   roster: RosterEntry[];
   onChange: (roster: RosterEntry[]) => void;
   userOwnsTeam: boolean;
   userId: string | undefined;
+  team?: Team | null;
+  showHeader?: boolean;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [pendingRemoveIndex, setPendingRemoveIndex] = useState<number | null>(null);
+  const detachDefaultPlayer = useDetachTeamDefaultPlayer();
 
   const existingPlayerIds = useMemo(
     () =>
@@ -405,8 +495,22 @@ function TeamRoster({
     [roster],
   );
 
-  function removePlayer(index: number) {
+  function initiateRemove(index: number) {
+    setPendingRemoveIndex(index);
+  }
+
+  async function confirmRemove(removeFromDefault: boolean) {
+    const index = pendingRemoveIndex!;
+    const entry = roster[index];
+    if (removeFromDefault && team && entry.kind === 'existing') {
+      try {
+        await detachDefaultPlayer.mutateAsync({ teamId: team.id, playerId: entry.playerId });
+      } catch {
+        // Detach failed — still remove from local roster
+      }
+    }
     onChange(roster.filter((_, i) => i !== index));
+    setPendingRemoveIndex(null);
   }
 
   function updateEntry(index: number, updates: Partial<RosterEntry>) {
@@ -426,46 +530,63 @@ function TeamRoster({
     setSearchOpen(false);
   }
 
+  const pendingEntry = pendingRemoveIndex !== null ? roster[pendingRemoveIndex] ?? null : null;
+
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
-        Roster
-      </p>
+    <>
+      <div>
+        {showHeader && (
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+            Roster
+          </p>
+        )}
 
-      {roster.length > 0 && (
-        <div className="space-y-3 mb-3">
-          {roster.map((entry, i) => (
-            <RosterRow
-              key={i}
-              entry={entry}
-              onUpdate={(updates) => updateEntry(i, updates)}
-              onRemove={() => removePlayer(i)}
-              showAddToDefault={userOwnsTeam}
-            />
-          ))}
-        </div>
-      )}
+        {roster.length > 0 && (
+          <div className="space-y-3 mb-3">
+            {roster.map((entry, i) => (
+              <RosterRow
+                key={i}
+                entry={entry}
+                onUpdate={(updates) => updateEntry(i, updates)}
+                onRemove={() => initiateRemove(i)}
+                showAddToDefault={userOwnsTeam}
+              />
+            ))}
+          </div>
+        )}
 
-      {searchOpen ? (
-        <PlayerSearchPanel
-          onSelectExisting={addExistingPlayer}
-          onCreateNew={addNewPlayer}
-          onClose={() => setSearchOpen(false)}
-          existingPlayerIds={existingPlayerIds}
-          userId={userId}
+        {searchOpen ? (
+          <PlayerSearchPanel
+            onSelectExisting={addExistingPlayer}
+            onCreateNew={addNewPlayer}
+            onClose={() => setSearchOpen(false)}
+            existingPlayerIds={existingPlayerIds}
+            userId={userId}
+          />
+        ) : (
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 1v10M1 6h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+            </svg>
+            Add Player
+          </button>
+        )}
+      </div>
+
+      {pendingEntry && (
+        <RemovePlayerModal
+          entry={pendingEntry}
+          teamName={team?.name ?? null}
+          userOwnsTeam={userOwnsTeam}
+          onConfirm={confirmRemove}
+          onCancel={() => setPendingRemoveIndex(null)}
+          isLoading={detachDefaultPlayer.isPending}
         />
-      ) : (
-        <button
-          onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 1v10M1 6h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
-          </svg>
-          Add Player
-        </button>
       )}
-    </div>
+    </>
   );
 }
 
@@ -723,6 +844,7 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
   const [homeTeam, setHomeTeam] = useState<Team | null>(null);
   const [awayRoster, setAwayRoster] = useState<RosterEntry[]>([]);
   const [homeRoster, setHomeRoster] = useState<RosterEntry[]>([]);
+  const [playersRoster, setPlayersRoster] = useState<RosterEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Mutations
@@ -816,16 +938,15 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
     }
 
     // Validate new player entries: must fill both name and jersey, or neither
-    if (participantMode === 'matchup') {
-      for (const roster of [awayRoster, homeRoster]) {
-        for (const entry of roster) {
-          if (entry.kind === 'new') {
-            const hasName = entry.name.trim().length > 0;
-            const hasJersey = entry.jerseyNumber.trim().length > 0;
-            if (hasName !== hasJersey) {
-              setError('New players must have both a name and jersey number, or leave both blank.');
-              return;
-            }
+    const rostersToValidate = participantMode === 'matchup' ? [awayRoster, homeRoster] : [playersRoster];
+    for (const roster of rostersToValidate) {
+      for (const entry of roster) {
+        if (entry.kind === 'new') {
+          const hasName = entry.name.trim().length > 0;
+          const hasJersey = entry.jerseyNumber.trim().length > 0;
+          if (hasName !== hasJersey) {
+            setError('New players must have both a name and jersey number, or remove the new player.');
+            return;
           }
         }
       }
@@ -896,6 +1017,32 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                 jersey_number: entry.jerseyNumber.trim() || null,
               });
             }
+          }
+        }
+      } else if (participantMode === 'players') {
+        for (const entry of playersRoster) {
+          if (entry.kind === 'new') {
+            if (!entry.name.trim()) continue; // both blank — skip silently
+
+            const newPlayer = await createPlayer.mutateAsync({
+              name: entry.name.trim(),
+              number: entry.jerseyNumber.trim() || null,
+              is_public: true,
+            });
+
+            await createBreakdownPlayer.mutateAsync({
+              breakdownId: bd.id,
+              player_id: newPlayer.id,
+              breakdown_team_id: null,
+              jersey_number: entry.jerseyNumber.trim() || null,
+            });
+          } else {
+            await createBreakdownPlayer.mutateAsync({
+              breakdownId: bd.id,
+              player_id: entry.playerId,
+              breakdown_team_id: null,
+              jersey_number: entry.jerseyNumber.trim() || null,
+            });
           }
         }
       }
@@ -1108,6 +1255,7 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                         onChange={setAwayRoster}
                         userOwnsTeam={user?.id === awayTeam.created_by_user_id}
                         userId={user?.id}
+                        team={awayTeam}
                       />
                     )}
                   </div>
@@ -1123,14 +1271,20 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                         onChange={setHomeRoster}
                         userOwnsTeam={user?.id === homeTeam.created_by_user_id}
                         userId={user?.id}
+                        team={homeTeam}
                       />
                     )}
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-zinc-400 dark:text-zinc-500">
-                  Individual player configuration coming soon.
-                </p>
+                <TeamRoster
+                  roster={playersRoster}
+                  onChange={setPlayersRoster}
+                  userOwnsTeam={false}
+                  userId={user?.id}
+                  team={null}
+                  showHeader={false}
+                />
               )}
             </Section>
           </div>
