@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBreakdown, useBreakdownTeams, useBreakdownPlayers, type BreakdownTeam, type BreakdownPlayer } from '@/hooks/breakdowns';
+import { useBreakdown, useBreakdownTeams, useBreakdownPlayers } from '@/hooks/breakdowns';
 
 interface Props {
   id: string;
@@ -46,20 +46,85 @@ function VideoBackLink({
   );
 }
 
-// Stats placeholder — shows participant rows in the table
-function StatsSection({
-  id,
-  isOwner,
-  teams,
-  players,
-}: {
-  id: string;
-  isOwner: boolean;
-  teams: BreakdownTeam[];
-  players: BreakdownPlayer[];
-}) {
-  const hasPlayers = players.length > 0;
+function ParticipantsSection({ breakdownId }: { breakdownId: string }) {
+  const { data: teams = [] } = useBreakdownTeams(breakdownId);
+  const { data: players = [] } = useBreakdownPlayers(breakdownId);
 
+  const hasTeams = teams.length > 0;
+
+  if (!hasTeams && players.length === 0) return null;
+
+  if (hasTeams) {
+    const away = teams.find((t) => t.home_away === 'away') ?? teams[0];
+    const home = teams.find((t) => t.home_away === 'home') ?? teams[1];
+
+    const playersFor = (teamId: string | undefined) =>
+      players.filter((p) => {
+        const team = teams.find((t) => t.id === p.breakdown_team_id);
+        return team?.team_id === teamId;
+      });
+
+    return (
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+          Participants
+        </p>
+        <div className="flex gap-4">
+          {[away, home].filter(Boolean).map((bt) => {
+            if (!bt) return null;
+            const teamPlayers = playersFor(bt.team_id);
+            return (
+              <div key={bt.id} className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
+                  {bt.home_away ?? ''}
+                </p>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                  {bt.team_name ?? bt.team_id}
+                </p>
+                {bt.team_league_name && (
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-2">{bt.team_league_name}</p>
+                )}
+                {teamPlayers.length > 0 && (
+                  <ul className="space-y-0.5 mt-2">
+                    {teamPlayers.map((p) => (
+                      <li key={p.id} className="text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
+                        {p.jersey_number && (
+                          <span className="text-zinc-400 dark:text-zinc-500 font-mono tabular-nums">#{p.jersey_number}</span>
+                        )}
+                        {p.player_name ?? p.player_id}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Players-only mode
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+        Players
+      </p>
+      <ul className="space-y-0.5">
+        {players.map((p) => (
+          <li key={p.id} className="text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
+            {p.jersey_number && (
+              <span className="text-zinc-400 dark:text-zinc-500 font-mono tabular-nums">#{p.jersey_number}</span>
+            )}
+            {p.player_name ?? p.player_id}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function StatsPlaceholder({ id, isOwner }: { id: string; isOwner: boolean }) {
   return (
     <div className="mt-8">
       <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-4">
@@ -72,153 +137,20 @@ function StatsSection({
           <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 text-center">REB</div>
           <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 text-center">AST</div>
         </div>
-        {hasPlayers ? (
-          <>
-            {players.map((p) => {
-              const team = teams.find((t) => t.id === p.breakdown_team_id);
-              return (
-                <div key={p.id} className="grid grid-cols-5 gap-0 px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-                  <div className="col-span-2 min-w-0">
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate block">
-                      {p.player_name ?? '—'}
-                    </span>
-                    {team?.team_abbreviation && (
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">{team.team_abbreviation}</span>
-                    )}
-                  </div>
-                  <div className="text-sm text-zinc-300 dark:text-zinc-600 text-center">—</div>
-                  <div className="text-sm text-zinc-300 dark:text-zinc-600 text-center">—</div>
-                  <div className="text-sm text-zinc-300 dark:text-zinc-600 text-center">—</div>
-                </div>
-              );
-            })}
-            <div className="px-4 py-3 text-center bg-zinc-50 dark:bg-zinc-800/30">
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                Stats will populate once events are tagged.
-              </p>
-              {isOwner && (
-                <Link
-                  href={`/breakdowns/${id}/tag`}
-                  className="inline-flex items-center gap-1 mt-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  Start tagging →
-                </Link>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="px-4 py-8 text-center">
-            <p className="text-sm text-zinc-400 dark:text-zinc-500">
-              Stats will appear here once events are tagged.
-            </p>
-            {isOwner && (
-              <Link
-                href={`/breakdowns/${id}/tag`}
-                className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Start tagging →
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Events section — lists each participant as a placeholder row
-function EventsSection({
-  id,
-  isOwner,
-  teams,
-  players,
-}: {
-  id: string;
-  isOwner: boolean;
-  teams: BreakdownTeam[];
-  players: BreakdownPlayer[];
-}) {
-  const hasPlayers = players.length > 0;
-  const hasTeams = teams.length > 0;
-
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
-        Events
-      </p>
-      {hasPlayers ? (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
-          {hasTeams
-            ? // Matchup: group by team
-              teams.map((bt) => {
-                const teamPlayers = players.filter((p) => p.breakdown_team_id === bt.id);
-                if (teamPlayers.length === 0) return null;
-                return (
-                  <div key={bt.id}>
-                    <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-800/50">
-                      <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                        {bt.team_name ?? bt.home_away ?? 'Team'}
-                      </p>
-                    </div>
-                    {teamPlayers.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between px-4 py-2.5 border-t border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {p.jersey_number && (
-                            <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono tabular-nums shrink-0">
-                              #{p.jersey_number}
-                            </span>
-                          )}
-                          <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
-                            {p.player_name ?? '—'}
-                          </span>
-                        </div>
-                        <span className="text-xs text-zinc-300 dark:text-zinc-600 shrink-0 ml-2">No events</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })
-            : // Players mode: flat list
-              players.map((p) => (
-                <div key={p.id} className="flex items-center justify-between px-4 py-2.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {p.jersey_number && (
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono tabular-nums shrink-0">
-                        #{p.jersey_number}
-                      </span>
-                    )}
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
-                      {p.player_name ?? '—'}
-                    </span>
-                  </div>
-                  <span className="text-xs text-zinc-300 dark:text-zinc-600 shrink-0 ml-2">No events</span>
-                </div>
-              ))}
-          <div className="px-4 py-3 text-center bg-zinc-50 dark:bg-zinc-800/30">
-            <p className="text-xs text-zinc-400 dark:text-zinc-500">No events tagged yet.</p>
-            {isOwner && (
-              <Link
-                href={`/breakdowns/${id}/tag`}
-                className="inline-flex items-center gap-1 mt-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Open Stat Taker →
-              </Link>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-8 text-center">
-          <p className="text-sm text-zinc-400 dark:text-zinc-500">No events tagged yet.</p>
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm text-zinc-400 dark:text-zinc-500">
+            Stats will appear here once events are tagged.
+          </p>
           {isOwner && (
             <Link
               href={`/breakdowns/${id}/tag`}
-              className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Open Stat Taker →
+              Start tagging →
             </Link>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -226,8 +158,6 @@ function EventsSection({
 export function BreakdownContent({ id }: Props) {
   const { user } = useAuth();
   const { data: breakdown, isLoading, isError } = useBreakdown(id);
-  const { data: teams = [] } = useBreakdownTeams(id);
-  const { data: players = [] } = useBreakdownPlayers(id);
 
   const isOwner = !!user && !!breakdown && user.id === breakdown.user_id;
 
@@ -248,13 +178,13 @@ export function BreakdownContent({ id }: Props) {
 
               {/* Stats — desktop only here; mobile copy lives after the right panel */}
               <div className="hidden lg:block">
-                <StatsSection id={id} isOwner={isOwner} teams={teams} players={players} />
+                <StatsPlaceholder id={id} isOwner={isOwner} />
               </div>
             </>
           )}
         </div>
 
-        {/* ── Right column: breakdown info + events ── */}
+        {/* ── Right column: breakdown info + participants + events ── */}
         <div className="w-full lg:w-1/3 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-800 lg:overflow-y-auto bg-white dark:bg-zinc-900">
           <div className="p-5 space-y-6">
             {breakdown ? (
@@ -310,7 +240,27 @@ export function BreakdownContent({ id }: Props) {
 
                 <div className="border-t border-zinc-100 dark:border-zinc-800" />
 
-                <EventsSection id={id} isOwner={isOwner} teams={teams} players={players} />
+                <ParticipantsSection breakdownId={id} />
+
+                <div className="border-t border-zinc-100 dark:border-zinc-800" />
+
+                {/* Events placeholder */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
+                    Events
+                  </p>
+                  <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-8 text-center">
+                    <p className="text-sm text-zinc-400 dark:text-zinc-500">No events tagged yet.</p>
+                    {isOwner && (
+                      <Link
+                        href={`/breakdowns/${id}/tag`}
+                        className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Open Stat Taker →
+                      </Link>
+                    )}
+                  </div>
+                </div>
               </>
             ) : isLoading ? (
               <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading…</p>
@@ -321,7 +271,7 @@ export function BreakdownContent({ id }: Props) {
         {/* ── Stats — mobile only, appears after the right panel ── */}
         {breakdown && (
           <div className="lg:hidden px-6 pb-8 bg-zinc-50 dark:bg-zinc-950">
-            <StatsSection id={id} isOwner={isOwner} teams={teams} players={players} />
+            <StatsPlaceholder id={id} isOwner={isOwner} />
           </div>
         )}
 
