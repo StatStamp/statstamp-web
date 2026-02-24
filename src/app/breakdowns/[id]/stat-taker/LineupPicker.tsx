@@ -5,9 +5,10 @@ import { BreakdownTeam, BreakdownPlayer } from '@/hooks/breakdowns';
 import { CollectionWorkflow } from '@/hooks/collections';
 import { EventGroup } from '@/hooks/eventGroups';
 import { useCreateEventGroup, useCreateEvent } from '@/hooks/eventGroups';
-import { useCollectionEventTypes } from '@/hooks/collections';
-import { useBreakdown } from '@/hooks/breakdowns';
 import { useTaggingStore } from '@/store/tagging';
+
+// System-reserved UUIDs — fixed constants defined in the API's EventType model.
+const SYSTEM_SUB_IN_ID = '00000000-0000-0000-0000-000000000002';
 
 interface Props {
   breakdownId: string;
@@ -27,19 +28,11 @@ export function LineupPicker({ breakdownId, teams, players, workflows, isStarter
   const resetAfterSubmit = useTaggingStore((s) => s.resetAfterSubmit);
   const cancelWorkflow = useTaggingStore((s) => s.cancelWorkflow);
 
-  const { data: breakdown } = useBreakdown(breakdownId);
-  const { data: eventTypes = [] } = useCollectionEventTypes(breakdown?.collection_id ?? null);
-
   const createEventGroup = useCreateEventGroup();
   const createEvent = useCreateEvent();
   const isSubmitting = createEventGroup.isPending || createEvent.isPending;
 
   const lineupWorkflow = workflows.find((w) => w.system_reserved) ?? null;
-
-  // SYSTEM_SUB_IN event type: found from event types by name
-  const subInEventType = eventTypes.find((et) =>
-    et.name.toUpperCase().includes('SYSTEM_SUB_IN') || et.name.toUpperCase().includes('SUB_IN'),
-  ) ?? null;
 
   const hasTeams = teams.length > 0;
 
@@ -52,8 +45,8 @@ export function LineupPicker({ breakdownId, teams, players, workflows, isStarter
     : [{ team: null, players }];
 
   async function handleSubmit() {
-    if (!lineupWorkflow || !subInEventType) {
-      setSubmitError('Lineup workflow or sub-in event type not found.');
+    if (!lineupWorkflow) {
+      setSubmitError('Lineup workflow not found.');
       return;
     }
     setSubmitError(null);
@@ -71,7 +64,7 @@ export function LineupPicker({ breakdownId, teams, players, workflows, isStarter
         await createEvent.mutateAsync({
           breakdownId,
           groupId: group.id,
-          event_type_id: subInEventType.id,
+          event_type_id: SYSTEM_SUB_IN_ID,
           breakdown_player_id: playerId,
         });
       }
