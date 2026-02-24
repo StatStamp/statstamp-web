@@ -40,7 +40,7 @@ export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
   ).length;
 
   const endingPeriodNumber = existingPeriodEndCount + 1;
-  const isOverflow = endingPeriodNumber > periods.length;
+  const isOverflow = endingPeriodNumber >= periods.length;
 
   async function handleSubmit() {
     setSubmitError(null);
@@ -79,11 +79,11 @@ export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
       {isOverflow ? (
         <div>
           <p className="text-sm font-medium text-zinc-200 leading-snug mb-2">
-            All {periods.length} configured period{periods.length !== 1 ? 's' : ''} have ended.
+            Period {endingPeriodNumber} is the last configured period.
           </p>
           <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-            Recording an end-of-period marker for the final period isn't necessary — the game
-            is over. But if another period is starting (e.g., overtime), create it below first.
+            No end-of-period marker is needed for the final period — the game is simply over.
+            If an additional period is starting (e.g., overtime), create it below first.
           </p>
           <div>
             <p className="text-xs text-zinc-500 mb-2">
