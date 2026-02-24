@@ -123,6 +123,7 @@ export function StatTakerContent({ id }: Props) {
               eventGroups={eventGroups}
               workflows={workflows}
               players={players}
+              teams={teams}
               seekRef={seekRef}
             />
           </div>
