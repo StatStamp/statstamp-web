@@ -31,7 +31,7 @@ function TrashIcon() {
       xmlns="http://www.w3.org/2000/svg"
       className="stroke-current"
     >
-      <path d="M2 3.5h10M5.5 3.5V2.5a1 1 0 011-1h1a1 1 0 011 1v1M5 3.5l.5 8h3l.5-8" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 4h9M5.5 4V3a1 1 0 011-1h1a1 1 0 011 1v1M3.5 4l.5 8h6l.5-8" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

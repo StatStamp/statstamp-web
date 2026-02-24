@@ -47,7 +47,7 @@ export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workfl
               onClick={goBack}
               className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
             >
-              ← Back
+              <svg width="7" height="11" viewBox="0 0 7 11" fill="none" className="inline mr-1" aria-hidden="true"><path d="M5.5 1L1.5 5.5L5.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Back
             </button>
           )}
           {inWorkflow && (
