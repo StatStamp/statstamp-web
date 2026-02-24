@@ -8,7 +8,8 @@ export type TaggingPhase =
   | 'step'          // answering a workflow step
   | 'participant'   // participant picker
   | 'confirmation'  // review queued events + game clock + submit
-  | 'lineup';       // mid-game substitution picker
+  | 'lineup'        // mid-game substitution picker
+  | 'period_end';   // end-of-period confirmation
 
 export interface QueuedEvent {
   eventTypeId: string;
@@ -64,6 +65,7 @@ interface TaggingState {
   cancelWorkflow: () => void;
   startLineup: (timestamp: number, currentlyInGameIds: string[]) => void;
   toggleLineupPlayer: (id: string) => void;
+  startPeriodEnd: (timestamp: number) => void;
   setGameClockMinutes: (v: string) => void;
   setGameClockSeconds: (v: string) => void;
   resetAfterSubmit: () => void;
@@ -322,6 +324,16 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       phase: 'lineup',
       selectedTimestamp: timestamp,
       lineupPlayerIds: currentlyInGameIds,
+    });
+  },
+
+  startPeriodEnd(timestamp) {
+    const state = get();
+    const newHistory = [...state.history, snapshot(state)];
+    set({
+      history: newHistory,
+      phase: 'period_end',
+      selectedTimestamp: timestamp,
     });
   },
 

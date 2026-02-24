@@ -1,6 +1,6 @@
 'use client';
 
-import { BreakdownTeam, BreakdownPlayer } from '@/hooks/breakdowns';
+import { BreakdownTeam, BreakdownPlayer, BreakdownPeriod } from '@/hooks/breakdowns';
 import { CollectionWorkflow } from '@/hooks/collections';
 import { EventGroup } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
@@ -9,6 +9,7 @@ import { StepView } from './StepView';
 import { ParticipantPicker } from './ParticipantPicker';
 import { ConfirmationView } from './ConfirmationView';
 import { LineupPicker } from './LineupPicker';
+import { PeriodEndView } from './PeriodEndView';
 
 interface Props {
   breakdownId: string;
@@ -16,9 +17,10 @@ interface Props {
   players: BreakdownPlayer[];
   eventGroups: EventGroup[];
   workflows: CollectionWorkflow[];
+  periods: BreakdownPeriod[];
 }
 
-export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workflows }: Props) {
+export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workflows, periods }: Props) {
   const phase = useTaggingStore((s) => s.phase);
   const currentWorkflow = useTaggingStore((s) => s.currentWorkflow);
   const history = useTaggingStore((s) => s.history);
@@ -37,6 +39,8 @@ export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workfl
             ? 'Set Starters'
             : phase === 'lineup'
             ? 'Update Lineup'
+            : phase === 'period_end'
+            ? 'End of Period'
             : phase === 'idle'
             ? 'Workflows'
             : currentWorkflow?.name ?? 'Tagging'}
@@ -79,6 +83,7 @@ export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workfl
             players={players}
             eventGroups={eventGroups}
             workflows={workflows}
+            periods={periods}
           />
         )}
         {phase === 'step' && (
@@ -103,6 +108,13 @@ export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workfl
             eventGroups={eventGroups}
             workflows={workflows}
             isStarters={false}
+          />
+        )}
+        {phase === 'period_end' && (
+          <PeriodEndView
+            breakdownId={breakdownId}
+            periods={periods}
+            eventGroups={eventGroups}
           />
         )}
       </div>

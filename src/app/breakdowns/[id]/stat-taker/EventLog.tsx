@@ -14,6 +14,7 @@ interface Props {
   players: BreakdownPlayer[];
   teams: BreakdownTeam[];
   seekRef: React.MutableRefObject<((seconds: number) => void) | null>;
+  onTimestampClick?: () => void;
 }
 
 function formatTimestamp(seconds: number): string {
@@ -37,7 +38,7 @@ function TrashIcon() {
   );
 }
 
-export function EventLog({ breakdownId, eventGroups, workflows, players, teams, seekRef }: Props) {
+export function EventLog({ breakdownId, eventGroups, workflows, players, teams, seekRef, onTimestampClick }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const { data: breakdown } = useBreakdown(breakdownId);
   const { data: eventTypes = [] } = useCollectionEventTypes(breakdown?.collection_id ?? null);
@@ -69,6 +70,21 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
     };
   }
 
+  function getPeriodEndLabel(group: EventGroup): string | null {
+    const SYSTEM_PERIOD_END_ID = '00000000-0000-0000-0000-000000000003';
+    const hasPeriodEnd = group.events.some(
+      (e) => e.event_type_id === SYSTEM_PERIOD_END_ID && e.deleted_at === null,
+    );
+    if (!hasPeriodEnd) return null;
+    const periodEndGroups = [...eventGroups]
+      .filter((g) =>
+        g.events.some((e) => e.event_type_id === SYSTEM_PERIOD_END_ID && e.deleted_at === null),
+      )
+      .sort((a, b) => a.video_timestamp - b.video_timestamp);
+    const index = periodEndGroups.findIndex((g) => g.id === group.id);
+    return `End of Period ${index + 1}`;
+  }
+
   async function handleDelete(groupId: string) {
     await deleteEventGroup.mutateAsync({ breakdownId, groupId });
     setConfirmDeleteId(null);
@@ -91,6 +107,7 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
     <div className="divide-y divide-zinc-800/60">
       {sortedGroups.map((group) => {
         const isLineup = lineupWorkflow && group.workflow_id === lineupWorkflow.id;
+        const periodEndLabel = getPeriodEndLabel(group);
         const isConfirmingDelete = confirmDeleteId === group.id;
         const activeEvents = group.events.filter((e) => e.deleted_at === null);
 
@@ -98,7 +115,7 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
           <div key={group.id} className="flex items-start gap-3 px-4 py-3 group/row hover:bg-zinc-900/50">
             {/* Timestamp — clickable to seek */}
             <button
-              onClick={() => seekRef.current?.(group.video_timestamp)}
+              onClick={() => { seekRef.current?.(group.video_timestamp); onTimestampClick?.(); }}
               className="shrink-0 font-mono text-xs text-zinc-500 hover:text-zinc-300 transition-colors pt-0.5 tabular-nums"
             >
               {formatTimestamp(group.video_timestamp)}
@@ -106,7 +123,10 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              {isLineup ? (
+              {periodEndLabel ? (
+                /* Period end group */
+                <p className="text-xs font-semibold text-zinc-400 pt-0.5">{periodEndLabel}</p>
+              ) : isLineup ? (
                 /* Lineup group */
                 <div>
                   <p className="text-xs font-semibold text-zinc-400 mb-1">
