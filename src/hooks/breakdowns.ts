@@ -104,12 +104,16 @@ export function useCreateBreakdownPeriod() {
 }
 
 export function useCreateBreakdownTeam() {
+  const queryClient = useQueryClient();
   return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away' }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams`, {
         method: 'POST',
         body: data,
       }).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'teams'] });
+    },
   });
 }
 
