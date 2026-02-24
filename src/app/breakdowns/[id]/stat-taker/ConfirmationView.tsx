@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { BreakdownPeriod } from '@/hooks/breakdowns';
-import { CollectionWorkflow } from '@/hooks/collections';
 import { useCreateEventGroup, useCreateEvent } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
 import { useCollectionEventTypes } from '@/hooks/collections';
@@ -10,21 +8,17 @@ import { useBreakdown } from '@/hooks/breakdowns';
 
 interface Props {
   breakdownId: string;
-  periods: BreakdownPeriod[];
-  workflows: CollectionWorkflow[];
 }
 
-export function ConfirmationView({ breakdownId, periods, workflows }: Props) {
+export function ConfirmationView({ breakdownId }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const queuedEvents = useTaggingStore((s) => s.queuedEvents);
   const currentWorkflow = useTaggingStore((s) => s.currentWorkflow);
   const selectedTimestamp = useTaggingStore((s) => s.selectedTimestamp) ?? 0;
-  const periodId = useTaggingStore((s) => s.periodId);
   const gameClockMinutes = useTaggingStore((s) => s.gameClockMinutes);
   const gameClockSeconds = useTaggingStore((s) => s.gameClockSeconds);
   const goBack = useTaggingStore((s) => s.goBack);
-  const setPeriodId = useTaggingStore((s) => s.setPeriodId);
   const setGameClockMinutes = useTaggingStore((s) => s.setGameClockMinutes);
   const setGameClockSeconds = useTaggingStore((s) => s.setGameClockSeconds);
   const resetAfterSubmit = useTaggingStore((s) => s.resetAfterSubmit);
@@ -44,9 +38,9 @@ export function ConfirmationView({ breakdownId, periods, workflows }: Props) {
   }
 
   function getGameClockSeconds(): number | null {
+    if (!gameClockMinutes && !gameClockSeconds) return null;
     const mins = parseInt(gameClockMinutes || '0', 10);
     const secs = parseInt(gameClockSeconds || '0', 10);
-    if (isNaN(mins) && isNaN(secs)) return null;
     return (isNaN(mins) ? 0 : mins) * 60 + (isNaN(secs) ? 0 : secs);
   }
 
@@ -83,8 +77,6 @@ export function ConfirmationView({ breakdownId, periods, workflows }: Props) {
     }
   }
 
-  const sortedPeriods = [...periods].sort((a, b) => a.order - b.order);
-
   return (
     <div className="space-y-5">
       {/* Queued events list */}
@@ -119,56 +111,29 @@ export function ConfirmationView({ breakdownId, periods, workflows }: Props) {
         <span className="font-mono text-zinc-300">{formatTimestamp(selectedTimestamp)}</span>
       </div>
 
-      {/* Game clock */}
+      {/* Game clock (optional) */}
       <div>
         <p className="text-xs text-zinc-500 mb-2">Game clock (optional)</p>
-        <div className="flex items-center gap-2">
-          {/* Period selector */}
-          {sortedPeriods.length > 0 && (
-            <select
-              value={periodId ?? ''}
-              onChange={(e) => setPeriodId(e.target.value || null)}
-              className="flex-1 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 focus:outline-none focus:border-zinc-500"
-            >
-              <option value="">— Period —</option>
-              {sortedPeriods.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.order === 1
-                    ? 'Q1'
-                    : p.order === 2
-                    ? 'Q2'
-                    : p.order === 3
-                    ? 'Q3'
-                    : p.order === 4
-                    ? 'Q4'
-                    : `Period ${p.order}`}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* MM:SS input */}
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              min="0"
-              max="59"
-              placeholder="MM"
-              value={gameClockMinutes}
-              onChange={(e) => setGameClockMinutes(e.target.value)}
-              className="w-12 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <span className="text-zinc-500 font-mono">:</span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              placeholder="SS"
-              value={gameClockSeconds}
-              onChange={(e) => setGameClockSeconds(e.target.value)}
-              className="w-12 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min="0"
+            max="99"
+            placeholder="MM"
+            value={gameClockMinutes}
+            onChange={(e) => setGameClockMinutes(e.target.value)}
+            className="w-14 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-zinc-500 font-mono">:</span>
+          <input
+            type="number"
+            min="0"
+            max="59"
+            placeholder="SS"
+            value={gameClockSeconds}
+            onChange={(e) => setGameClockSeconds(e.target.value)}
+            className="w-14 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
         </div>
       </div>
 

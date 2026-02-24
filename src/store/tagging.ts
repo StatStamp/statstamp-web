@@ -47,7 +47,6 @@ interface TaggingState {
 
   queuedEvents: QueuedEvent[];
 
-  periodId: string | null;
   gameClockMinutes: string;
   gameClockSeconds: string;
 
@@ -65,7 +64,6 @@ interface TaggingState {
   cancelWorkflow: () => void;
   startLineup: (timestamp: number, currentlyInGameIds: string[]) => void;
   toggleLineupPlayer: (id: string) => void;
-  setPeriodId: (id: string | null) => void;
   setGameClockMinutes: (v: string) => void;
   setGameClockSeconds: (v: string) => void;
   resetAfterSubmit: () => void;
@@ -123,7 +121,6 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
 
   queuedEvents: [],
 
-  periodId: null,
   gameClockMinutes: '',
   gameClockSeconds: '',
 
@@ -336,10 +333,6 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
     set({ lineupPlayerIds: ids });
   },
 
-  setPeriodId(id) {
-    set({ periodId: id });
-  },
-
   setGameClockMinutes(v) {
     set({ gameClockMinutes: v });
   },
@@ -360,7 +353,6 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       nextStepAfterParticipant: null,
       lineupPlayerIds: [],
       history: [],
-      periodId: null,
       gameClockMinutes: '',
       gameClockSeconds: '',
     });
