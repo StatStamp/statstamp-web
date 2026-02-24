@@ -888,6 +888,11 @@ export function EditBreakdownContent({ id }: Props) {
   async function handleConfirmRemoveTeam() {
     if (!confirmRemoveTeamId) return;
     try {
+      // Delete all players in this team slot first
+      const slotPlayers = players.filter((p) => p.breakdown_team_id === confirmRemoveTeamId);
+      for (const p of slotPlayers) {
+        await deletePlayer.mutateAsync({ breakdownId: id, playerId: p.id });
+      }
       await deleteTeam.mutateAsync({ breakdownId: id, teamId: confirmRemoveTeamId });
     } catch { /* ignore */ }
     setConfirmRemoveTeamId(null);
@@ -1228,7 +1233,7 @@ export function EditBreakdownContent({ id }: Props) {
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-sm w-full">
             <div className="px-6 py-5 space-y-3">
               <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Remove Team?</h3>
-              <p className="text-sm text-zinc-600 dark:text-zinc-300">Players assigned to this team will remain on the breakdown but become unaffiliated.</p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-300">This will also remove all players in this team's roster from the breakdown.</p>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 pb-5">
               <button onClick={() => setConfirmRemoveTeamId(null)} className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Cancel</button>
