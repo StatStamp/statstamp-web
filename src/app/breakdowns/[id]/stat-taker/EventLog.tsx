@@ -71,7 +71,7 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
   }
 
   function getPeriodEndLabel(group: EventGroup): string | null {
-    const periodEndType = eventTypes.find((et) => et.name === 'SYSTEM_PERIOD_END');
+    const periodEndType = eventTypes.find((et) => et.id === '00000000-0000-0000-0000-000000000003');
     if (!periodEndType) return null;
     const hasPeriodEnd = group.events.some(
       (e) => e.event_type_id === periodEndType.id && e.deleted_at === null,

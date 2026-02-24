@@ -143,24 +143,29 @@ export function StatTakerContent({ id }: Props) {
           </div>
 
           {/* Event log — fills remaining vertical space */}
-          <div className="flex-1 overflow-y-auto border-t border-zinc-800 relative group/log min-h-0">
-            {/* Expand / collapse button */}
-            <button
-              onClick={() => setIsLogExpanded((v) => !v)}
-              className={`absolute top-2 right-2 z-10 transition-opacity p-1.5 rounded-md bg-zinc-900/80 border border-zinc-700 hover:border-zinc-500 text-zinc-500 hover:text-zinc-300 ${isLogExpanded ? 'opacity-100' : 'opacity-0 group-hover/log:opacity-100'}`}
-              aria-label={isLogExpanded ? 'Collapse event log' : 'Expand event log'}
-            >
-              {isLogExpanded ? <CollapseIcon /> : <ExpandIcon />}
-            </button>
-            <EventLog
-              breakdownId={id}
-              eventGroups={eventGroups}
-              workflows={workflows}
-              players={players}
-              teams={teams}
-              seekRef={seekRef}
-              onTimestampClick={() => setIsLogExpanded(false)}
-            />
+          <div className="flex-1 flex flex-col border-t border-zinc-800 min-h-0 group/log">
+            {/* Thin non-scrolling header with expand / collapse button */}
+            <div className="shrink-0 h-7 flex items-center justify-end px-2 border-b border-zinc-800/50">
+              <button
+                onClick={() => setIsLogExpanded((v) => !v)}
+                className={`transition-opacity p-1 rounded-md border text-zinc-500 hover:text-zinc-300 hover:border-zinc-500 ${isLogExpanded ? 'opacity-100 border-zinc-600' : 'opacity-0 group-hover/log:opacity-100 border-zinc-700'}`}
+                aria-label={isLogExpanded ? 'Collapse event log' : 'Expand event log'}
+              >
+                {isLogExpanded ? <CollapseIcon /> : <ExpandIcon />}
+              </button>
+            </div>
+            {/* Scrollable events */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <EventLog
+                breakdownId={id}
+                eventGroups={eventGroups}
+                workflows={workflows}
+                players={players}
+                teams={teams}
+                seekRef={seekRef}
+                onTimestampClick={() => setIsLogExpanded(false)}
+              />
+            </div>
           </div>
         </div>
 

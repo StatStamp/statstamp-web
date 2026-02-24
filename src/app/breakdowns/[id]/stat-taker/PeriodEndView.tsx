@@ -35,7 +35,10 @@ export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
 
   const isSubmitting = createEventGroup.isPending || createEvent.isPending || createPeriod.isPending;
 
-  const periodEndEventType = eventTypes.find((et) => et.name === 'SYSTEM_PERIOD_END');
+  // Hard-coded system UUID — name in DB is "Period End", not "SYSTEM_PERIOD_END"
+  const periodEndEventType = eventTypes.find(
+    (et) => et.id === '00000000-0000-0000-0000-000000000003',
+  );
 
   const existingPeriodEndCount = periodEndEventType
     ? eventGroups.filter((g) =>
