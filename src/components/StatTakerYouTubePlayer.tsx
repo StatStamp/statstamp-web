@@ -8,9 +8,11 @@ declare global {
   interface Window {
     YT: {
       Player: new (
-        elementId: string,
+        element: string | HTMLElement,
         options: {
           videoId: string;
+          width?: string | number;
+          height?: string | number;
           playerVars?: Record<string, string | number>;
           events?: {
             onReady?: (e: { target: YTPlayer }) => void;
@@ -41,7 +43,7 @@ export function StatTakerYouTubePlayer({ videoId, onTick, seekRef }: Props) {
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(false);
   const onTickRef = useRef(onTick);
-  const containerId = 'stat-taker-yt-player';
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Keep onTickRef current without re-running the effect
   useEffect(() => {
@@ -52,14 +54,23 @@ export function StatTakerYouTubePlayer({ videoId, onTick, seekRef }: Props) {
     mountedRef.current = true;
 
     function initPlayer() {
-      if (!window.YT?.Player) return;
+      if (!window.YT?.Player || !wrapperRef.current) return;
       if (playerRef.current) {
         playerRef.current.destroy();
         playerRef.current = null;
       }
 
-      new window.YT.Player(containerId, {
+      // Always create a fresh container div — avoids the StrictMode problem where
+      // YouTube replaces the static div with an iframe on the first mount, leaving
+      // nothing for the second mount to attach to.
+      wrapperRef.current.innerHTML = '';
+      const container = document.createElement('div');
+      wrapperRef.current.appendChild(container);
+
+      new window.YT.Player(container, {
         videoId,
+        width: '100%',
+        height: '100%',
         playerVars: { enablejsapi: 1, rel: 0, modestbranding: 1 },
         events: {
           onReady(e) {
@@ -71,8 +82,7 @@ export function StatTakerYouTubePlayer({ videoId, onTick, seekRef }: Props) {
       });
     }
 
-    // Start the tick interval immediately; it reports once the player is ready.
-    // This avoids the StrictMode double-mount breaking the onReady-scoped interval.
+    // Start the tick interval immediately; it no-ops until the player is ready.
     tickIntervalRef.current = setInterval(() => {
       if (!mountedRef.current || !playerRef.current) return;
       try {
@@ -85,9 +95,10 @@ export function StatTakerYouTubePlayer({ videoId, onTick, seekRef }: Props) {
     if (window.YT?.Player) {
       initPlayer();
     } else {
-      const prev = window.onYouTubeIframeAPIReady;
+      // Don't chain the previous onYouTubeIframeAPIReady — this is the only YT
+      // player on the page, and chaining causes double-init on StrictMode remounts
+      // (both the stale and active mount's initPlayer run, the second finds no div).
       window.onYouTubeIframeAPIReady = () => {
-        prev?.();
         if (mountedRef.current) initPlayer();
       };
     }
@@ -98,6 +109,8 @@ export function StatTakerYouTubePlayer({ videoId, onTick, seekRef }: Props) {
       playerRef.current?.destroy();
       playerRef.current = null;
       seekRef.current = null;
+      // Clear the wrapper so the next mount gets a fresh container div to hand to YT.
+      if (wrapperRef.current) wrapperRef.current.innerHTML = '';
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
@@ -108,9 +121,7 @@ export function StatTakerYouTubePlayer({ videoId, onTick, seekRef }: Props) {
         src="https://www.youtube.com/iframe_api"
         strategy="afterInteractive"
       />
-      <div className="w-full h-full">
-        <div id={containerId} className="w-full h-full" />
-      </div>
+      <div className="w-full h-full" ref={wrapperRef} />
     </>
   );
 }
