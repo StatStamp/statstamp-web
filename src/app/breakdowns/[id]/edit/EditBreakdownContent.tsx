@@ -27,7 +27,7 @@ import {
 } from '@/hooks/breakdowns';
 import { useTeams, type Team, type Player } from '@/hooks/teams';
 import { usePlayers, useCreatePlayer } from '@/hooks/players';
-import type { ApiError } from '@/lib/api';
+import { apiFetch, type ApiError } from '@/lib/api';
 
 interface Props {
   id: string;
@@ -760,6 +760,7 @@ export function EditBreakdownContent({ id }: Props) {
   const createTeam = useCreateBreakdownTeam();
   const updateTeam = useUpdateBreakdownTeam();
   const deleteTeam = useDeleteBreakdownTeam();
+  const createBreakdownPlayer = useCreateBreakdownPlayer();
   const deletePlayer = useDeleteBreakdownPlayer();
   const deleteBreakdown = useDeleteBreakdown();
 
@@ -852,14 +853,36 @@ export function EditBreakdownContent({ id }: Props) {
   async function handleTeamSelect(team: Team) {
     if (!teamModalSide) return;
     const existingRecord = teamModalSide === 'away' ? awayTeamRecord : homeTeamRecord;
+
+    let breakdownTeamId: string;
     if (existingRecord) {
-      // Update existing breakdown_team record
+      // Delete players currently in this slot before swapping the team
+      const slotPlayers = players.filter((p) => p.breakdown_team_id === existingRecord.id);
+      for (const p of slotPlayers) {
+        await deletePlayer.mutateAsync({ breakdownId: id, playerId: p.id });
+      }
       await updateTeam.mutateAsync({ breakdownId: id, teamId: existingRecord.id, team_id: team.id });
+      breakdownTeamId = existingRecord.id;
     } else {
-      // Create new breakdown_team record
-      await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: teamModalSide });
+      const newBT = await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: teamModalSide });
+      breakdownTeamId = newBT.id;
     }
     setTeamModalSide(null);
+
+    // Auto-populate default players for the selected team
+    try {
+      const res = await apiFetch<{ data: { id: string; name: string; number: string | null }[] }>(`/teams/${team.id}/default-players`);
+      for (const player of res.data) {
+        await createBreakdownPlayer.mutateAsync({
+          breakdownId: id,
+          player_id: player.id,
+          breakdown_team_id: breakdownTeamId,
+          jersey_number: player.number ?? null,
+        });
+      }
+    } catch {
+      // Non-critical — silently skip if default players can't be loaded
+    }
   }
 
   async function handleConfirmRemoveTeam() {

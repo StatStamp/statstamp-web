@@ -118,12 +118,16 @@ export function useCreateBreakdownTeam() {
 }
 
 export function useCreateBreakdownPlayer() {
+  const queryClient = useQueryClient();
   return useMutation<BreakdownPlayer, ApiError, { breakdownId: string; player_id: string; breakdown_team_id: string | null; jersey_number: string | null }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownPlayer }>(`/breakdowns/${breakdownId}/players`, {
         method: 'POST',
         body: data,
       }).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'players'] });
+    },
   });
 }
 
