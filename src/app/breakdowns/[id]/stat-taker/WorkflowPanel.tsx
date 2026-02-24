@@ -1,0 +1,116 @@
+'use client';
+
+import { BreakdownTeam, BreakdownPlayer, BreakdownPeriod } from '@/hooks/breakdowns';
+import { CollectionWorkflow } from '@/hooks/collections';
+import { EventGroup } from '@/hooks/eventGroups';
+import { useTaggingStore } from '@/store/tagging';
+import { WorkflowGrid } from './WorkflowGrid';
+import { StepView } from './StepView';
+import { ParticipantPicker } from './ParticipantPicker';
+import { ConfirmationView } from './ConfirmationView';
+import { LineupPicker } from './LineupPicker';
+
+interface Props {
+  breakdownId: string;
+  teams: BreakdownTeam[];
+  players: BreakdownPlayer[];
+  periods: BreakdownPeriod[];
+  eventGroups: EventGroup[];
+  workflows: CollectionWorkflow[];
+}
+
+export function WorkflowPanel({ breakdownId, teams, players, periods, eventGroups, workflows }: Props) {
+  const phase = useTaggingStore((s) => s.phase);
+  const currentWorkflow = useTaggingStore((s) => s.currentWorkflow);
+  const history = useTaggingStore((s) => s.history);
+  const goBack = useTaggingStore((s) => s.goBack);
+  const cancelWorkflow = useTaggingStore((s) => s.cancelWorkflow);
+
+  const canGoBack = history.length > 0;
+  const inWorkflow = phase !== 'idle' && phase !== 'starters';
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          {phase === 'starters'
+            ? 'Set Starters'
+            : phase === 'lineup'
+            ? 'Update Lineup'
+            : phase === 'idle'
+            ? 'Workflows'
+            : currentWorkflow?.name ?? 'Tagging'}
+        </span>
+        <div className="flex items-center gap-2">
+          {canGoBack && (
+            <button
+              onClick={goBack}
+              className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              ← Back
+            </button>
+          )}
+          {inWorkflow && (
+            <button
+              onClick={cancelWorkflow}
+              className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Panel body */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {phase === 'starters' && (
+          <LineupPicker
+            breakdownId={breakdownId}
+            teams={teams}
+            players={players}
+            eventGroups={eventGroups}
+            workflows={workflows}
+            isStarters
+          />
+        )}
+        {phase === 'idle' && (
+          <WorkflowGrid
+            teams={teams}
+            players={players}
+            eventGroups={eventGroups}
+            workflows={workflows}
+          />
+        )}
+        {phase === 'step' && (
+          <StepView workflows={workflows} />
+        )}
+        {phase === 'participant' && (
+          <ParticipantPicker
+            teams={teams}
+            players={players}
+            eventGroups={eventGroups}
+            workflows={workflows}
+          />
+        )}
+        {phase === 'confirmation' && (
+          <ConfirmationView
+            breakdownId={breakdownId}
+            periods={periods}
+            workflows={workflows}
+          />
+        )}
+        {phase === 'lineup' && (
+          <LineupPicker
+            breakdownId={breakdownId}
+            teams={teams}
+            players={players}
+            eventGroups={eventGroups}
+            workflows={workflows}
+            isStarters={false}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

@@ -11,11 +11,37 @@ export interface Collection {
   updated_at: string;
 }
 
+export interface WorkflowOption {
+  id: string;
+  step_id: string;
+  label: string;
+  next_step_id: string | null;
+  event_type_id: string | null;
+  display_order: number;
+  collect_participant: boolean;
+  participant_prompt: string | null;
+  participant_copy_step_id: string | null;
+  collect_coordinate: boolean;
+  coordinate_prompt: string | null;
+  coordinate_image_id: string | null;
+}
+
+export interface WorkflowStep {
+  id: string;
+  workflow_id: string;
+  prompt: string;
+  type: string;
+  options: WorkflowOption[];
+}
+
 export interface CollectionWorkflow {
   id: string;
+  collection_id: string;
+  first_step_id: string | null;
   name: string;
   display_order: number;
   system_reserved: boolean;
+  steps: WorkflowStep[];
 }
 
 export interface CollectionEventType {
