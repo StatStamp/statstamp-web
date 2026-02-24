@@ -145,3 +145,94 @@ export function useBreakdownPlayers(breakdownId: string) {
     },
   });
 }
+
+export function useBreakdownPeriods(breakdownId: string) {
+  return useQuery<BreakdownPeriod[]>({
+    queryKey: ['breakdowns', breakdownId, 'periods'],
+    queryFn: async () => {
+      const res = await apiFetch<PaginatedResponse<BreakdownPeriod>>(`/breakdowns/${breakdownId}/periods`);
+      return res.data;
+    },
+  });
+}
+
+export function useUpdateBreakdown() {
+  const queryClient = useQueryClient();
+  return useMutation<Breakdown, ApiError, { id: string; name?: string; is_public?: boolean; video_id?: string | null; collection_id?: string | null }>({
+    mutationFn: ({ id, ...data }) =>
+      apiFetch<{ data: Breakdown }>(`/breakdowns/${id}`, { method: 'PATCH', body: data }).then((r) => r.data),
+    onSuccess: (bd) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', bd.id] });
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', 'video', bd.video_id] });
+    },
+  });
+}
+
+export function useUpdateBreakdownPeriod() {
+  const queryClient = useQueryClient();
+  return useMutation<BreakdownPeriod, ApiError, { breakdownId: string; periodId: string; duration_seconds: number | null }>({
+    mutationFn: ({ breakdownId, periodId, ...data }) =>
+      apiFetch<{ data: BreakdownPeriod }>(`/breakdowns/${breakdownId}/periods/${periodId}`, {
+        method: 'PATCH',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'periods'] });
+    },
+  });
+}
+
+export function useDeleteBreakdownPeriod() {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, { breakdownId: string; periodId: string }>({
+    mutationFn: ({ breakdownId, periodId }) =>
+      apiFetch(`/breakdowns/${breakdownId}/periods/${periodId}`, { method: 'DELETE' }).then(() => undefined),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'periods'] });
+    },
+  });
+}
+
+export function useUpdateBreakdownTeam() {
+  const queryClient = useQueryClient();
+  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; teamId: string; team_id?: string; home_away?: 'home' | 'away' | null }>({
+    mutationFn: ({ breakdownId, teamId, ...data }) =>
+      apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams/${teamId}`, {
+        method: 'PATCH',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'teams'] });
+    },
+  });
+}
+
+export function useDeleteBreakdownTeam() {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, { breakdownId: string; teamId: string }>({
+    mutationFn: ({ breakdownId, teamId }) =>
+      apiFetch(`/breakdowns/${breakdownId}/teams/${teamId}`, { method: 'DELETE' }).then(() => undefined),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'players'] });
+    },
+  });
+}
+
+export function useDeleteBreakdownPlayer() {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, { breakdownId: string; playerId: string }>({
+    mutationFn: ({ breakdownId, playerId }) =>
+      apiFetch(`/breakdowns/${breakdownId}/players/${playerId}`, { method: 'DELETE' }).then(() => undefined),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'players'] });
+    },
+  });
+}
+
+export function useDeleteBreakdown() {
+  return useMutation<void, ApiError, { id: string }>({
+    mutationFn: ({ id }) =>
+      apiFetch(`/breakdowns/${id}`, { method: 'DELETE' }).then(() => undefined),
+  });
+}
