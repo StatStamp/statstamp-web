@@ -25,6 +25,7 @@ function formatTimestamp(seconds: number): string {
 export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [newPeriodMinutes, setNewPeriodMinutes] = useState('');
+  const [newPeriodSeconds, setNewPeriodSeconds] = useState('');
 
   const selectedTimestamp = useTaggingStore((s) => s.selectedTimestamp) ?? 0;
   const resetAfterSubmit = useTaggingStore((s) => s.resetAfterSubmit);
@@ -47,7 +48,9 @@ export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
     try {
       if (isOverflow) {
         const mins = parseInt(newPeriodMinutes || '0', 10);
-        const durationSeconds = isNaN(mins) || mins <= 0 ? null : mins * 60;
+        const secs = parseInt(newPeriodSeconds || '0', 10);
+        const total = (isNaN(mins) ? 0 : mins) * 60 + (isNaN(secs) ? 0 : secs);
+        const durationSeconds = total > 0 ? total : null;
         await createPeriod.mutateAsync({
           breakdownId,
           order: periods.length + 1,
@@ -87,16 +90,29 @@ export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
           </p>
           <div>
             <p className="text-xs text-zinc-500 mb-2">
-              New period duration (minutes, optional)
+              New period duration (optional)
             </p>
-            <input
-              type="number"
-              min="0"
-              placeholder="e.g. 5"
-              value={newPeriodMinutes}
-              onChange={(e) => setNewPeriodMinutes(e.target.value)}
-              className="w-24 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={newPeriodMinutes}
+                onChange={(e) => setNewPeriodMinutes(e.target.value)}
+                className="w-16 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-sm text-zinc-500">min</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                placeholder="0"
+                value={newPeriodSeconds}
+                onChange={(e) => setNewPeriodSeconds(e.target.value)}
+                className="w-16 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-sm text-zinc-500">sec</span>
+            </div>
           </div>
         </div>
       ) : (
