@@ -13,6 +13,15 @@ interface Props {
   workflows: CollectionWorkflow[];
 }
 
+function sortByJersey(players: BreakdownPlayer[]): BreakdownPlayer[] {
+  return [...players].sort((a, b) => {
+    const aNum = a.jersey_number !== null ? parseInt(a.jersey_number, 10) : Infinity;
+    const bNum = b.jersey_number !== null ? parseInt(b.jersey_number, 10) : Infinity;
+    if (aNum !== bNum) return aNum - bNum;
+    return (a.player_name ?? '').localeCompare(b.player_name ?? '');
+  });
+}
+
 function PlayerBtn({ player, onSelect }: { player: BreakdownPlayer; onSelect: () => void }) {
   return (
     <button
@@ -103,7 +112,7 @@ export function ParticipantPicker({ teams, players, eventGroups, workflows }: Pr
     }
 
     function splitPlayers(team: BreakdownTeam) {
-      const all = teamPlayers(team);
+      const all = sortByJersey(teamPlayers(team));
       return {
         inGame: all.filter((p) => inGameIds.includes(p.id)),
         bench: all.filter((p) => !inGameIds.includes(p.id)),
@@ -147,8 +156,9 @@ export function ParticipantPicker({ teams, players, eventGroups, workflows }: Pr
   }
 
   // Non-matchup mode: single list, in-game first
-  const inGamePlayers = players.filter((p) => inGameIds.includes(p.id));
-  const benchPlayers = players.filter((p) => !inGameIds.includes(p.id));
+  const sorted = sortByJersey(players);
+  const inGamePlayers = sorted.filter((p) => inGameIds.includes(p.id));
+  const benchPlayers = sorted.filter((p) => !inGameIds.includes(p.id));
 
   return (
     <div className="space-y-4">

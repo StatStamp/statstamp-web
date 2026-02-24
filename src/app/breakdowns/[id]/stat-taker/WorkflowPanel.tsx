@@ -1,6 +1,6 @@
 'use client';
 
-import { BreakdownTeam, BreakdownPlayer, BreakdownPeriod } from '@/hooks/breakdowns';
+import { BreakdownTeam, BreakdownPlayer } from '@/hooks/breakdowns';
 import { CollectionWorkflow } from '@/hooks/collections';
 import { EventGroup } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
@@ -14,12 +14,11 @@ interface Props {
   breakdownId: string;
   teams: BreakdownTeam[];
   players: BreakdownPlayer[];
-  periods: BreakdownPeriod[];
   eventGroups: EventGroup[];
   workflows: CollectionWorkflow[];
 }
 
-export function WorkflowPanel({ breakdownId, teams, players, periods, eventGroups, workflows }: Props) {
+export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workflows }: Props) {
   const phase = useTaggingStore((s) => s.phase);
   const currentWorkflow = useTaggingStore((s) => s.currentWorkflow);
   const history = useTaggingStore((s) => s.history);
@@ -94,11 +93,7 @@ export function WorkflowPanel({ breakdownId, teams, players, periods, eventGroup
           />
         )}
         {phase === 'confirmation' && (
-          <ConfirmationView
-            breakdownId={breakdownId}
-            periods={periods}
-            workflows={workflows}
-          />
+          <ConfirmationView breakdownId={breakdownId} />
         )}
         {phase === 'lineup' && (
           <LineupPicker

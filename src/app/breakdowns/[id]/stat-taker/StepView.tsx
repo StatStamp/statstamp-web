@@ -13,8 +13,8 @@ export function StepView({ workflows }: Props) {
 
   if (!currentStep) return null;
 
-  const sortedOptions = [...currentStep.options].sort(
-    (a, b) => a.display_order - b.display_order,
+  const sortedOptions = [...currentStep.options].sort((a, b) =>
+    a.label.localeCompare(b.label),
   );
 
   return (

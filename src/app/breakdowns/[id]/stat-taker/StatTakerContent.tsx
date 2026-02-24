@@ -7,7 +7,7 @@ import { AppLogoIcon } from '@/components/AppLogoIcon';
 import { StatTakerYouTubePlayer } from '@/components/StatTakerYouTubePlayer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBreakdown } from '@/hooks/breakdowns';
-import { useBreakdownTeams, useBreakdownPlayers, useBreakdownPeriods } from '@/hooks/breakdowns';
+import { useBreakdownTeams, useBreakdownPlayers } from '@/hooks/breakdowns';
 import { useCollectionWorkflows } from '@/hooks/collections';
 import { useEventGroups } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
@@ -25,7 +25,6 @@ export function StatTakerContent({ id }: Props) {
   const { data: breakdown, isLoading: breakdownLoading } = useBreakdown(id);
   const { data: teams = [] } = useBreakdownTeams(id);
   const { data: players = [] } = useBreakdownPlayers(id);
-  const { data: periods = [] } = useBreakdownPeriods(id);
   const { data: workflows = [] } = useCollectionWorkflows(breakdown?.collection_id ?? null);
   const { data: eventGroups = [] } = useEventGroups(id);
 
@@ -135,7 +134,6 @@ export function StatTakerContent({ id }: Props) {
             breakdownId={id}
             teams={teams}
             players={players}
-            periods={periods}
             eventGroups={eventGroups}
             workflows={workflows}
           />
