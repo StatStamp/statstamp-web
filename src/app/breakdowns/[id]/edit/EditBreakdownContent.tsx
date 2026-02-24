@@ -751,6 +751,7 @@ export function EditBreakdownContent({ id }: Props) {
   const [teamModalSide, setTeamModalSide] = useState<'away' | 'home' | null>(null);
   const [confirmDeleteBreakdown, setConfirmDeleteBreakdown] = useState(false);
   const [confirmRemoveTeamId, setConfirmRemoveTeamId] = useState<string | null>(null);
+  const [confirmSwitchToMatchup, setConfirmSwitchToMatchup] = useState(false);
 
   // Mutations
   const updateBreakdown = useUpdateBreakdown();
@@ -759,6 +760,7 @@ export function EditBreakdownContent({ id }: Props) {
   const createTeam = useCreateBreakdownTeam();
   const updateTeam = useUpdateBreakdownTeam();
   const deleteTeam = useDeleteBreakdownTeam();
+  const deletePlayer = useDeleteBreakdownPlayer();
   const deleteBreakdown = useDeleteBreakdown();
 
   // Data for details section
@@ -874,6 +876,15 @@ export function EditBreakdownContent({ id }: Props) {
       await deleteTeam.mutateAsync({ breakdownId: id, teamId: t.id });
     }
     setPendingMode(null);
+  }
+
+  async function handleConfirmSwitchToMatchup() {
+    // Players → Matchup: delete all unaffiliated players
+    for (const p of players) {
+      await deletePlayer.mutateAsync({ breakdownId: id, playerId: p.id });
+    }
+    setConfirmSwitchToMatchup(false);
+    setPendingMode('matchup');
   }
 
   async function handleDeleteBreakdown() {
@@ -1058,7 +1069,11 @@ export function EditBreakdownContent({ id }: Props) {
                         if (mode === 'players' && (hasTeams || pendingMode === 'matchup')) {
                           setPendingMode(hasTeams ? 'players' : null);
                         } else if (mode === 'matchup' && !hasTeams) {
-                          setPendingMode('matchup');
+                          if (players.length > 0) {
+                            setConfirmSwitchToMatchup(true);
+                          } else {
+                            setPendingMode('matchup');
+                          }
                         }
                       }}
                       className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize ${
@@ -1214,6 +1229,24 @@ export function EditBreakdownContent({ id }: Props) {
               <button onClick={() => setPendingMode(null)} className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Cancel</button>
               <button onClick={handleConfirmSwitchMode} disabled={deleteTeam.isPending} className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors">
                 {deleteTeam.isPending ? 'Switching…' : 'Switch Mode'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Switch players → matchup confirm */}
+      {confirmSwitchToMatchup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && setConfirmSwitchToMatchup(false)}>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-sm w-full">
+            <div className="px-6 py-5 space-y-3">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Switch to Matchup mode?</h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-300">This will remove all players from the breakdown. You can add them back to specific teams afterwards.</p>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 pb-5">
+              <button onClick={() => setConfirmSwitchToMatchup(false)} className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Cancel</button>
+              <button onClick={handleConfirmSwitchToMatchup} disabled={deletePlayer.isPending} className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors">
+                {deletePlayer.isPending ? 'Removing…' : 'Switch Mode'}
               </button>
             </div>
           </div>
