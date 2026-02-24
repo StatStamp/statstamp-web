@@ -515,13 +515,26 @@ function TeamSlot({
   );
 }
 
-function MatchupDivider() {
+function MatchupDivider({ onSwap, swapping }: { onSwap?: () => void; swapping?: boolean }) {
   return (
-    <div className="relative flex flex-col items-center justify-center w-10 shrink-0 self-stretch">
+    <div className="relative flex flex-col items-center justify-center w-10 shrink-0 self-stretch gap-2">
       <div className="absolute inset-0 flex justify-center">
         <div className="w-px h-full bg-zinc-200 dark:bg-zinc-800" />
       </div>
       <span className="relative z-10 text-2xl font-bold text-zinc-300 dark:text-zinc-600 bg-zinc-50 dark:bg-zinc-950 py-1 select-none">@</span>
+      {onSwap && (
+        <button
+          onClick={onSwap}
+          disabled={swapping}
+          title="Swap home and away"
+          className="relative z-10 bg-zinc-50 dark:bg-zinc-950 p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 disabled:opacity-40 transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 4h12M10 1.5L12.5 4 10 6.5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" />
+            <path d="M13 10H1M4 7.5L1.5 10 4 12.5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -885,6 +898,15 @@ export function EditBreakdownContent({ id }: Props) {
     }
   }
 
+  async function handleSwapTeams() {
+    if (awayTeamRecord) {
+      await updateTeam.mutateAsync({ breakdownId: id, teamId: awayTeamRecord.id, home_away: 'home' });
+    }
+    if (homeTeamRecord) {
+      await updateTeam.mutateAsync({ breakdownId: id, teamId: homeTeamRecord.id, home_away: 'away' });
+    }
+  }
+
   async function handleConfirmRemoveTeam() {
     if (!confirmRemoveTeamId) return;
     try {
@@ -1144,7 +1166,7 @@ export function EditBreakdownContent({ id }: Props) {
                     )}
                   </div>
 
-                  <MatchupDivider />
+                  <MatchupDivider onSwap={hasTeams ? handleSwapTeams : undefined} swapping={updateTeam.isPending} />
 
                   {/* Home side */}
                   <div className="flex flex-col gap-4 flex-1 min-w-0">
