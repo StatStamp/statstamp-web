@@ -33,7 +33,9 @@ export function StatTakerContent({ id }: Props) {
 
   const initStore = useTaggingStore((s) => s.initStore);
   const setVideoTimestamp = useTaggingStore((s) => s.setVideoTimestamp);
-  const storeInitialized = useTaggingStore((s) => s.workflows.length > 0);
+  // Track whether we've done the one-time store init so re-fetches after
+  // submissions don't call initStore again mid-loop and wipe lineup state.
+  const storeInitializedRef = useRef(false);
 
   const isOwner = !!user && !!breakdown && user.id === breakdown.user_id;
 
@@ -51,14 +53,16 @@ export function StatTakerContent({ id }: Props) {
     }
   }, [breakdownLoading, breakdown, authLoading, user, id, router]);
 
-  // Initialize store once workflows and event groups are loaded
+  // Initialize store exactly once — when all data is first available.
+  // Using a ref guard prevents re-initialization when eventGroups re-fetches
+  // after a submission (which would wipe lineupPlayerIds mid-loop).
   useEffect(() => {
+    if (storeInitializedRef.current) return;
     if (workflows.length === 0 || !isOwner) return;
 
     const lineupWorkflow = workflows.find((w) => w.system_reserved);
     const hasTeams = teams.length > 0;
 
-    // Starters required if: matchup mode (teams exist) + no lineup group at timestamp ~0
     const startersSet = !hasTeams || (lineupWorkflow
       ? eventGroups.some(
           (g) => g.workflow_id === lineupWorkflow.id && g.video_timestamp < 1,
@@ -66,9 +70,9 @@ export function StatTakerContent({ id }: Props) {
       : true);
 
     initStore(workflows, startersSet ? 'idle' : 'starters');
-  // Only run when all data is first available — not on every re-render
+    storeInitializedRef.current = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflows.length > 0, isOwner, teams.length, eventGroups.length]);
+  }, [workflows.length, isOwner, teams.length, eventGroups.length]);
 
   const isLoading = authLoading || breakdownLoading;
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { BreakdownTeam, BreakdownPlayer } from '@/hooks/breakdowns';
 import { CollectionWorkflow } from '@/hooks/collections';
 import { EventGroup } from '@/hooks/eventGroups';
@@ -12,25 +13,63 @@ interface Props {
   workflows: CollectionWorkflow[];
 }
 
-function PlayerButton({
-  player,
-  onSelect,
-}: {
-  player: BreakdownPlayer;
-  onSelect: () => void;
-}) {
+function PlayerBtn({ player, onSelect }: { player: BreakdownPlayer; onSelect: () => void }) {
   return (
     <button
       onClick={onSelect}
-      className="flex items-center gap-2 w-full rounded-lg bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 px-3 py-2.5 text-sm text-zinc-100 transition-colors text-left"
+      className="flex items-center gap-1.5 w-full rounded-md bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 px-2 py-2 text-xs text-zinc-100 transition-colors text-left"
     >
       {player.jersey_number && (
-        <span className="text-xs font-mono text-zinc-400 w-6 shrink-0 text-right">
-          {player.jersey_number}
-        </span>
+        <span className="font-mono text-zinc-500 shrink-0">{player.jersey_number}</span>
       )}
       <span className="truncate">{player.player_name}</span>
     </button>
+  );
+}
+
+interface TeamColumnProps {
+  team: BreakdownTeam;
+  inGamePlayers: BreakdownPlayer[];
+  benchPlayers: BreakdownPlayer[];
+  onSelectTeam: () => void;
+  onSelectPlayer: (player: BreakdownPlayer) => void;
+}
+
+function TeamColumn({ team, inGamePlayers, benchPlayers, onSelectTeam, onSelectPlayer }: TeamColumnProps) {
+  const [benchOpen, setBenchOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-1.5 min-w-0">
+      {/* Team header — also a selectable button */}
+      <button
+        onClick={onSelectTeam}
+        className="w-full rounded-md bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 px-2 py-2 text-xs font-semibold text-zinc-200 truncate transition-colors text-center"
+        title={team.team_name ?? team.team_abbreviation ?? 'Team'}
+      >
+        {team.team_abbreviation ?? team.team_name ?? 'Team'}
+      </button>
+
+      {/* In-game players */}
+      {inGamePlayers.map((p) => (
+        <PlayerBtn key={p.id} player={p} onSelect={() => onSelectPlayer(p)} />
+      ))}
+
+      {/* Bench (collapsible) */}
+      {benchPlayers.length > 0 && (
+        <>
+          <button
+            onClick={() => setBenchOpen((o) => !o)}
+            className="w-full text-left px-2 py-1 text-xs text-zinc-600 hover:text-zinc-400 transition-colors flex items-center gap-1"
+          >
+            <span>{benchOpen ? '▾' : '▸'}</span>
+            <span>Bench ({benchPlayers.length})</span>
+          </button>
+          {benchOpen && benchPlayers.map((p) => (
+            <PlayerBtn key={p.id} player={p} onSelect={() => onSelectPlayer(p)} />
+          ))}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -40,27 +79,76 @@ export function ParticipantPicker({ teams, players, eventGroups, workflows }: Pr
   const selectParticipant = useTaggingStore((s) => s.selectParticipant);
 
   const lineupWorkflow = workflows.find((w) => w.system_reserved) ?? null;
-  const hasTeams = teams.length > 0;
+  const isMatchup = teams.length >= 2;
 
-  // Players currently in game (for prioritized section)
   const inGameIds = lineupWorkflow
     ? getPlayersCurrentlyInGame(eventGroups, lineupWorkflow.id, selectedTimestamp)
     : [];
-
-  const inGamePlayers = players.filter((p) => inGameIds.includes(p.id));
-  const benchPlayers = players.filter((p) => !inGameIds.includes(p.id));
 
   function handleSelectPlayer(player: BreakdownPlayer) {
     selectParticipant(player.id, player.player_name ?? null, false);
   }
 
   function handleSelectTeam(team: BreakdownTeam) {
-    selectParticipant(team.id, team.team_name ?? null, true);
+    selectParticipant(team.id, team.team_name ?? team.team_abbreviation ?? 'Team', true);
   }
 
-  function handleNoAttribution() {
-    selectParticipant(null, null, false);
+  // Matchup mode: two-column layout (away left, home right)
+  if (isMatchup) {
+    const awayTeam = teams.find((t) => t.home_away === 'away') ?? teams[0];
+    const homeTeam = teams.find((t) => t.home_away === 'home') ?? teams[1];
+
+    function teamPlayers(team: BreakdownTeam) {
+      return players.filter((p) => p.breakdown_team_id === team.id);
+    }
+
+    function splitPlayers(team: BreakdownTeam) {
+      const all = teamPlayers(team);
+      return {
+        inGame: all.filter((p) => inGameIds.includes(p.id)),
+        bench: all.filter((p) => !inGameIds.includes(p.id)),
+      };
+    }
+
+    const away = splitPlayers(awayTeam);
+    const home = splitPlayers(homeTeam);
+
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-zinc-300 leading-snug">
+          {participantPrompt ?? 'Who?'}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2">
+          <TeamColumn
+            team={awayTeam}
+            inGamePlayers={away.inGame}
+            benchPlayers={away.bench}
+            onSelectTeam={() => handleSelectTeam(awayTeam)}
+            onSelectPlayer={handleSelectPlayer}
+          />
+          <TeamColumn
+            team={homeTeam}
+            inGamePlayers={home.inGame}
+            benchPlayers={home.bench}
+            onSelectTeam={() => handleSelectTeam(homeTeam)}
+            onSelectPlayer={handleSelectPlayer}
+          />
+        </div>
+
+        <button
+          onClick={() => selectParticipant(null, null, false)}
+          className="w-full text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1.5 border-t border-zinc-800 text-center"
+        >
+          No attribution
+        </button>
+      </div>
+    );
   }
+
+  // Non-matchup mode: single list, in-game first
+  const inGamePlayers = players.filter((p) => inGameIds.includes(p.id));
+  const benchPlayers = players.filter((p) => !inGameIds.includes(p.id));
 
   return (
     <div className="space-y-4">
@@ -68,62 +156,45 @@ export function ParticipantPicker({ teams, players, eventGroups, workflows }: Pr
         {participantPrompt ?? 'Who?'}
       </p>
 
-      {/* Teams (if matchup mode) */}
-      {hasTeams && (
-        <div>
-          <p className="text-xs text-zinc-500 mb-1.5">Team</p>
-          <div className="flex flex-col gap-1.5">
-            {teams.map((team) => (
-              <button
-                key={team.id}
-                onClick={() => handleSelectTeam(team)}
-                className="flex items-center w-full rounded-lg bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 px-3 py-2.5 text-sm text-zinc-100 transition-colors text-left"
-              >
-                {team.team_name ?? team.team_abbreviation ?? 'Team'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* In-game players */}
       {inGamePlayers.length > 0 && (
         <div>
           <p className="text-xs text-zinc-500 mb-1.5">In Game</p>
           <div className="flex flex-col gap-1.5">
-            {inGamePlayers.map((player) => (
-              <PlayerButton
-                key={player.id}
-                player={player}
-                onSelect={() => handleSelectPlayer(player)}
-              />
+            {inGamePlayers.map((p) => (
+              <PlayerBtn key={p.id} player={p} onSelect={() => handleSelectPlayer(p)} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Other players */}
       {benchPlayers.length > 0 && (
         <div>
           <p className="text-xs text-zinc-500 mb-1.5">
             {inGamePlayers.length > 0 ? 'Other Players' : 'Players'}
           </p>
           <div className="flex flex-col gap-1.5">
-            {benchPlayers.map((player) => (
-              <PlayerButton
-                key={player.id}
-                player={player}
-                onSelect={() => handleSelectPlayer(player)}
-              />
+            {benchPlayers.map((p) => (
+              <PlayerBtn key={p.id} player={p} onSelect={() => handleSelectPlayer(p)} />
             ))}
           </div>
         </div>
       )}
 
-      {/* No attribution */}
+      {teams.length === 1 && (
+        <div>
+          <p className="text-xs text-zinc-500 mb-1.5">Team</p>
+          <button
+            onClick={() => handleSelectTeam(teams[0])}
+            className="w-full rounded-md bg-zinc-800 hover:bg-zinc-700 px-3 py-2.5 text-sm text-zinc-100 transition-colors text-left"
+          >
+            {teams[0].team_name ?? teams[0].team_abbreviation ?? 'Team'}
+          </button>
+        </div>
+      )}
+
       <button
-        onClick={handleNoAttribution}
-        className="w-full text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-2 border-t border-zinc-800 mt-2 text-center"
+        onClick={() => selectParticipant(null, null, false)}
+        className="w-full text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-2 border-t border-zinc-800 text-center"
       >
         No attribution
       </button>
