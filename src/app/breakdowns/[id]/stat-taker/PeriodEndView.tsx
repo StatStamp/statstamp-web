@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useBreakdown, useCreateBreakdownPeriod } from '@/hooks/breakdowns';
+import { useCreateBreakdownPeriod } from '@/hooks/breakdowns';
 import type { BreakdownPeriod } from '@/hooks/breakdowns';
-import { useCollectionEventTypes } from '@/hooks/collections';
 import { useCreateEventGroup, useCreateEvent } from '@/hooks/eventGroups';
 import type { EventGroup } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
+
+// System constant — stable UUID, not attached to collection pivot table
+const SYSTEM_PERIOD_END_ID = '00000000-0000-0000-0000-000000000003';
 
 interface Props {
   breakdownId: string;
@@ -27,32 +29,20 @@ export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
   const selectedTimestamp = useTaggingStore((s) => s.selectedTimestamp) ?? 0;
   const resetAfterSubmit = useTaggingStore((s) => s.resetAfterSubmit);
 
-  const { data: breakdown } = useBreakdown(breakdownId);
-  const { data: eventTypes = [] } = useCollectionEventTypes(breakdown?.collection_id ?? null);
   const createEventGroup = useCreateEventGroup();
   const createEvent = useCreateEvent();
   const createPeriod = useCreateBreakdownPeriod();
 
   const isSubmitting = createEventGroup.isPending || createEvent.isPending || createPeriod.isPending;
 
-  // Hard-coded system UUID — name in DB is "Period End", not "SYSTEM_PERIOD_END"
-  const periodEndEventType = eventTypes.find(
-    (et) => et.id === '00000000-0000-0000-0000-000000000003',
-  );
-
-  const existingPeriodEndCount = periodEndEventType
-    ? eventGroups.filter((g) =>
-        g.events.some(
-          (e) => e.event_type_id === periodEndEventType.id && e.deleted_at === null,
-        ),
-      ).length
-    : 0;
+  const existingPeriodEndCount = eventGroups.filter((g) =>
+    g.events.some((e) => e.event_type_id === SYSTEM_PERIOD_END_ID && e.deleted_at === null),
+  ).length;
 
   const endingPeriodNumber = existingPeriodEndCount + 1;
   const isOverflow = endingPeriodNumber > periods.length;
 
   async function handleSubmit() {
-    if (!periodEndEventType) return;
     setSubmitError(null);
     try {
       if (isOverflow) {
@@ -75,21 +65,13 @@ export function PeriodEndView({ breakdownId, periods, eventGroups }: Props) {
       await createEvent.mutateAsync({
         breakdownId,
         groupId: group.id,
-        event_type_id: periodEndEventType.id,
+        event_type_id: SYSTEM_PERIOD_END_ID,
       });
 
       resetAfterSubmit();
     } catch {
       setSubmitError('Something went wrong. Please try again.');
     }
-  }
-
-  if (!periodEndEventType) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <p className="text-xs text-zinc-500">Period end event type not found in this collection.</p>
-      </div>
-    );
   }
 
   return (

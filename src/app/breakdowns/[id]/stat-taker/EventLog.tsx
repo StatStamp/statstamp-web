@@ -71,15 +71,14 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
   }
 
   function getPeriodEndLabel(group: EventGroup): string | null {
-    const periodEndType = eventTypes.find((et) => et.id === '00000000-0000-0000-0000-000000000003');
-    if (!periodEndType) return null;
+    const SYSTEM_PERIOD_END_ID = '00000000-0000-0000-0000-000000000003';
     const hasPeriodEnd = group.events.some(
-      (e) => e.event_type_id === periodEndType.id && e.deleted_at === null,
+      (e) => e.event_type_id === SYSTEM_PERIOD_END_ID && e.deleted_at === null,
     );
     if (!hasPeriodEnd) return null;
     const periodEndGroups = [...eventGroups]
       .filter((g) =>
-        g.events.some((e) => e.event_type_id === periodEndType.id && e.deleted_at === null),
+        g.events.some((e) => e.event_type_id === SYSTEM_PERIOD_END_ID && e.deleted_at === null),
       )
       .sort((a, b) => a.video_timestamp - b.video_timestamp);
     const index = periodEndGroups.findIndex((g) => g.id === group.id);
