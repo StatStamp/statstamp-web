@@ -59,7 +59,7 @@ interface TaggingState {
   initStore: (workflows: CollectionWorkflow[], initialPhase: TaggingPhase) => void;
   setVideoTimestamp: (t: number) => void;
   startWorkflow: (workflow: CollectionWorkflow, timestamp: number) => void;
-  selectOption: (option: WorkflowOption) => void;
+  selectOption: (option: WorkflowOption, pushHistory?: boolean) => void;
   selectParticipant: (id: string | null, name: string | null, isTeam: boolean) => void;
   goBack: () => void;
   cancelWorkflow: () => void;
@@ -169,17 +169,17 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       nextStepAfterParticipant: null,
     });
 
-    // Auto-advance if first step has exactly one option
+    // Auto-advance if first step has exactly one option — no history push (skip invisible step)
     if (firstStep && firstStep.options.length === 1) {
-      get().selectOption(firstStep.options[0]);
+      get().selectOption(firstStep.options[0], false);
     }
   },
 
-  selectOption(option) {
+  selectOption(option, pushHistory = true) {
     const state = get();
     if (!state.currentStep || !state.currentWorkflow) return;
 
-    const newHistory = [...state.history, snapshot(state)];
+    const newHistory = pushHistory ? [...state.history, snapshot(state)] : state.history;
     const newQueuedEvents = state.queuedEvents.map((e) => ({ ...e }));
 
     // Queue an event if this option produces one
@@ -239,7 +239,7 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         nextStepAfterParticipant: null,
       });
       if (nextStep.options.length === 1) {
-        get().selectOption(nextStep.options[0]);
+        get().selectOption(nextStep.options[0], false);
       }
     } else {
       set({
@@ -255,6 +255,8 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
 
   selectParticipant(id, name, isTeam) {
     const state = get();
+    // Push current participant-picker state to history so goBack() returns here
+    const newHistory = [...state.history, snapshot(state)];
     const newQueuedEvents = state.queuedEvents.map((e) => ({ ...e }));
 
     if (newQueuedEvents.length > 0) {
@@ -267,6 +269,7 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
     const nextStep = state.nextStepAfterParticipant;
     if (nextStep) {
       set({
+        history: newHistory,
         queuedEvents: newQueuedEvents,
         currentStep: nextStep,
         phase: 'step',
@@ -275,10 +278,11 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         nextStepAfterParticipant: null,
       });
       if (nextStep.options.length === 1) {
-        get().selectOption(nextStep.options[0]);
+        get().selectOption(nextStep.options[0], false);
       }
     } else {
       set({
+        history: newHistory,
         queuedEvents: newQueuedEvents,
         phase: 'confirmation',
         awaitingParticipant: false,
