@@ -90,12 +90,16 @@ export function useCreateBreakdown() {
 }
 
 export function useCreateBreakdownPeriod() {
+  const queryClient = useQueryClient();
   return useMutation<BreakdownPeriod, ApiError, { breakdownId: string; order: number; duration_seconds: number | null }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownPeriod }>(`/breakdowns/${breakdownId}/periods`, {
         method: 'POST',
         body: data,
       }).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'periods'] });
+    },
   });
 }
 
@@ -231,8 +235,14 @@ export function useDeleteBreakdownPlayer() {
 }
 
 export function useDeleteBreakdown() {
-  return useMutation<void, ApiError, { id: string }>({
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, { id: string; video_id?: string }>({
     mutationFn: ({ id }) =>
       apiFetch(`/breakdowns/${id}`, { method: 'DELETE' }).then(() => undefined),
+    onSuccess: (_, { video_id }) => {
+      if (video_id) {
+        queryClient.invalidateQueries({ queryKey: ['breakdowns', 'video', video_id] });
+      }
+    },
   });
 }

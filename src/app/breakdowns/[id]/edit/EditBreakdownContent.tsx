@@ -25,7 +25,7 @@ import {
   type BreakdownTeam,
   type BreakdownPlayer,
 } from '@/hooks/breakdowns';
-import { useTeams, useTeamDefaultPlayers, useAttachTeamDefaultPlayer, useDetachTeamDefaultPlayer, type Team, type Player } from '@/hooks/teams';
+import { useTeams, type Team, type Player } from '@/hooks/teams';
 import { usePlayers, useCreatePlayer } from '@/hooks/players';
 import type { ApiError } from '@/lib/api';
 
@@ -279,14 +279,12 @@ function EditTeamRoster({
   breakdownTeamId,
   players,
   userId,
-  userOwnsTeam,
   showHeader = true,
 }: {
   breakdownId: string;
   breakdownTeamId: string | null;
   players: BreakdownPlayer[];
   userId: string | undefined;
-  userOwnsTeam: boolean;
   showHeader?: boolean;
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -299,7 +297,6 @@ function EditTeamRoster({
   const createPlayer = useCreatePlayer();
   const createBreakdownPlayer = useCreateBreakdownPlayer();
   const deleteBreakdownPlayer = useDeleteBreakdownPlayer();
-  const detachDefaultPlayer = useDetachTeamDefaultPlayer();
 
   const existingPlayerIds = useMemo(
     () => new Set(players.map((p) => p.player_id)),
@@ -713,7 +710,6 @@ export function EditBreakdownContent({ id }: Props) {
   const detailsInitialized = useRef(false);
   const [detailName, setDetailName] = useState('');
   const [detailCollectionId, setDetailCollectionId] = useState<string | null>(null);
-  const [detailIsPublic, setDetailIsPublic] = useState(true);
   const [detailsDirty, setDetailsDirty] = useState(false);
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
@@ -723,7 +719,6 @@ export function EditBreakdownContent({ id }: Props) {
       detailsInitialized.current = true;
       setDetailName(breakdown.name);
       setDetailCollectionId(breakdown.collection_id);
-      setDetailIsPublic(breakdown.is_public);
     }
   }, [breakdown]);
 
@@ -798,7 +793,6 @@ export function EditBreakdownContent({ id }: Props) {
         id,
         name: detailName.trim(),
         collection_id: detailCollectionId,
-        is_public: detailIsPublic,
       });
       setDetailsDirty(false);
     } catch (e: unknown) {
@@ -884,7 +878,7 @@ export function EditBreakdownContent({ id }: Props) {
 
   async function handleDeleteBreakdown() {
     try {
-      await deleteBreakdown.mutateAsync({ id });
+      await deleteBreakdown.mutateAsync({ id, video_id: breakdown?.video_id });
       router.push(`/videos/${breakdown?.video_id}`);
     } catch { /* ignore */ }
   }
@@ -1002,17 +996,6 @@ export function EditBreakdownContent({ id }: Props) {
                   ) : null}
                 </div>
 
-                {/* Visibility */}
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={detailIsPublic}
-                    onChange={(e) => { setDetailIsPublic(e.target.checked); setDetailsDirty(true); }}
-                    className="rounded border-zinc-300 dark:border-zinc-600"
-                  />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">Public breakdown</span>
-                </label>
-
                 {detailsError && <p className="text-xs text-red-500">{detailsError}</p>}
 
                 <button
@@ -1113,7 +1096,6 @@ export function EditBreakdownContent({ id }: Props) {
                         breakdownTeamId={awayTeamRecord.id}
                         players={players.filter((p) => p.breakdown_team_id === awayTeamRecord.id)}
                         userId={user?.id}
-                        userOwnsTeam={user?.id === awayTeam?.created_by_user_id}
                       />
                     )}
                   </div>
@@ -1141,7 +1123,6 @@ export function EditBreakdownContent({ id }: Props) {
                         breakdownTeamId={homeTeamRecord.id}
                         players={players.filter((p) => p.breakdown_team_id === homeTeamRecord.id)}
                         userId={user?.id}
-                        userOwnsTeam={user?.id === homeTeam?.created_by_user_id}
                       />
                     )}
                   </div>
@@ -1153,7 +1134,6 @@ export function EditBreakdownContent({ id }: Props) {
                   breakdownTeamId={null}
                   players={players}
                   userId={user?.id}
-                  userOwnsTeam={false}
                   showHeader={false}
                 />
               )}
