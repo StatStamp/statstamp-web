@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBreakdown, useBreakdownTeams, useBreakdownPlayers } from '@/hooks/breakdowns';
+import { useBreakdown } from '@/hooks/breakdowns';
 
 interface Props {
   id: string;
@@ -46,83 +46,6 @@ function VideoBackLink({
   );
 }
 
-function ParticipantsSection({ breakdownId }: { breakdownId: string }) {
-  const { data: teams = [] } = useBreakdownTeams(breakdownId);
-  const { data: players = [] } = useBreakdownPlayers(breakdownId);
-
-  const hasTeams = teams.length > 0;
-
-  if (!hasTeams && players.length === 0) return null;
-
-  if (hasTeams) {
-    const away = teams.find((t) => t.home_away === 'away') ?? teams[0];
-    const home = teams.find((t) => t.home_away === 'home') ?? teams[1];
-
-    const playersFor = (teamId: string | undefined) =>
-      players.filter((p) => {
-        const team = teams.find((t) => t.id === p.breakdown_team_id);
-        return team?.team_id === teamId;
-      });
-
-    return (
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
-          Participants
-        </p>
-        <div className="flex gap-4">
-          {[away, home].filter(Boolean).map((bt) => {
-            if (!bt) return null;
-            const teamPlayers = playersFor(bt.team_id);
-            return (
-              <div key={bt.id} className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
-                  {bt.home_away ?? ''}
-                </p>
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                  {bt.team_name ?? bt.team_id}
-                </p>
-                {bt.team_league_name && (
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-2">{bt.team_league_name}</p>
-                )}
-                {teamPlayers.length > 0 && (
-                  <ul className="space-y-0.5 mt-2">
-                    {teamPlayers.map((p) => (
-                      <li key={p.id} className="text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
-                        {p.jersey_number && (
-                          <span className="text-zinc-400 dark:text-zinc-500 font-mono tabular-nums">#{p.jersey_number}</span>
-                        )}
-                        {p.player_name ?? p.player_id}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // Players-only mode
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
-        Players
-      </p>
-      <ul className="space-y-0.5">
-        {players.map((p) => (
-          <li key={p.id} className="text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
-            {p.jersey_number && (
-              <span className="text-zinc-400 dark:text-zinc-500 font-mono tabular-nums">#{p.jersey_number}</span>
-            )}
-            {p.player_name ?? p.player_id}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 function StatsPlaceholder({ id, isOwner }: { id: string; isOwner: boolean }) {
   return (
@@ -237,10 +160,6 @@ export function BreakdownContent({ id }: Props) {
                     </Link>
                   </div>
                 )}
-
-                <div className="border-t border-zinc-100 dark:border-zinc-800" />
-
-                <ParticipantsSection breakdownId={id} />
 
                 <div className="border-t border-zinc-100 dark:border-zinc-800" />
 
