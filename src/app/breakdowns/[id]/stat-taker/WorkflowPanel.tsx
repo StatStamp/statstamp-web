@@ -93,7 +93,7 @@ export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workfl
           />
         )}
         {phase === 'confirmation' && (
-          <ConfirmationView breakdownId={breakdownId} />
+          <ConfirmationView breakdownId={breakdownId} players={players} teams={teams} />
         )}
         {phase === 'lineup' && (
           <LineupPicker
