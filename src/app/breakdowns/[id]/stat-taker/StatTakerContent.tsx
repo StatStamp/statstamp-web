@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppLogoIcon } from '@/components/AppLogoIcon';
 import { StatTakerYouTubePlayer } from '@/components/StatTakerYouTubePlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBreakdown } from '@/hooks/breakdowns';
-import { useBreakdownTeams, useBreakdownPlayers } from '@/hooks/breakdowns';
+import { useBreakdown, useBreakdownTeams, useBreakdownPlayers, useBreakdownPeriods } from '@/hooks/breakdowns';
 import { useCollectionWorkflows } from '@/hooks/collections';
 import { useEventGroups } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
@@ -18,6 +17,24 @@ interface Props {
   id: string;
 }
 
+function ExpandIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 1L3.5 4h5L6 1z" fill="currentColor" />
+      <path d="M6 11L8.5 8h-5L6 11z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function CollapseIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 4L3.5 1h5L6 4z" fill="currentColor" />
+      <path d="M6 8L8.5 11h-5L6 8z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function StatTakerContent({ id }: Props) {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -25,10 +42,12 @@ export function StatTakerContent({ id }: Props) {
   const { data: breakdown, isLoading: breakdownLoading } = useBreakdown(id);
   const { data: teams = [] } = useBreakdownTeams(id);
   const { data: players = [] } = useBreakdownPlayers(id);
+  const { data: periods = [] } = useBreakdownPeriods(id);
   const { data: workflows = [] } = useCollectionWorkflows(breakdown?.collection_id ?? null);
   const { data: eventGroups = [] } = useEventGroups(id);
 
   const seekRef = useRef<((seconds: number) => void) | null>(null);
+  const [isLogExpanded, setIsLogExpanded] = useState(false);
 
   const initStore = useTaggingStore((s) => s.initStore);
   const setVideoTimestamp = useTaggingStore((s) => s.setVideoTimestamp);
@@ -107,17 +126,32 @@ export function StatTakerContent({ id }: Props) {
       <div className="flex flex-row flex-1 overflow-hidden">
         {/* Left 2/3: video + event log */}
         <div className="flex flex-col flex-[2] overflow-hidden min-w-0">
-          {/* Video — aspect-video constrains height; fills available width */}
-          <div className="aspect-video w-full shrink-0 bg-black">
-            <StatTakerYouTubePlayer
-              videoId={breakdown.video_source_identifier ?? ''}
-              onTick={setVideoTimestamp}
-              seekRef={seekRef}
-            />
+          {/* Video — grid-rows trick animates height to 0 when log is expanded */}
+          <div
+            className="shrink-0 grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out"
+            style={{ gridTemplateRows: isLogExpanded ? '0fr' : '1fr' }}
+          >
+            <div className="overflow-hidden">
+              <div className="aspect-video w-full bg-black">
+                <StatTakerYouTubePlayer
+                  videoId={breakdown.video_source_identifier ?? ''}
+                  onTick={setVideoTimestamp}
+                  seekRef={seekRef}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Event log — fills remaining vertical space */}
-          <div className="flex-1 overflow-y-auto border-t border-zinc-800">
+          <div className="flex-1 overflow-y-auto border-t border-zinc-800 relative group/log min-h-0">
+            {/* Expand / collapse button */}
+            <button
+              onClick={() => setIsLogExpanded((v) => !v)}
+              className={`absolute top-2 right-2 z-10 transition-opacity p-1.5 rounded-md bg-zinc-900/80 border border-zinc-700 hover:border-zinc-500 text-zinc-500 hover:text-zinc-300 ${isLogExpanded ? 'opacity-100' : 'opacity-0 group-hover/log:opacity-100'}`}
+              aria-label={isLogExpanded ? 'Collapse event log' : 'Expand event log'}
+            >
+              {isLogExpanded ? <CollapseIcon /> : <ExpandIcon />}
+            </button>
             <EventLog
               breakdownId={id}
               eventGroups={eventGroups}
@@ -125,6 +159,7 @@ export function StatTakerContent({ id }: Props) {
               players={players}
               teams={teams}
               seekRef={seekRef}
+              onTimestampClick={() => setIsLogExpanded(false)}
             />
           </div>
         </div>
@@ -137,6 +172,7 @@ export function StatTakerContent({ id }: Props) {
             players={players}
             eventGroups={eventGroups}
             workflows={workflows}
+            periods={periods}
           />
         </div>
       </div>
