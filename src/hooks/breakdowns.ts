@@ -6,19 +6,13 @@ export interface Breakdown {
   video_id: string;
   user_id: string;
   user_name: string;
+  video_title?: string | null;
+  video_source_identifier?: string | null;
   video_thumbnail_url?: string | null;
   collection_id: string | null;
+  collection_name?: string | null;
   name: string;
   is_public: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BreakdownPeriod {
-  id: string;
-  breakdown_id: string;
-  order: number;
-  duration_seconds: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +21,9 @@ export interface BreakdownTeam {
   id: string;
   breakdown_id: string;
   team_id: string;
+  team_name?: string | null;
+  team_abbreviation?: string | null;
+  team_league_name?: string | null;
   home_away: 'home' | 'away' | null;
   created_at: string;
   updated_at: string;
@@ -36,8 +33,18 @@ export interface BreakdownPlayer {
   id: string;
   breakdown_id: string;
   player_id: string;
+  player_name?: string | null;
   breakdown_team_id: string | null;
   jersey_number: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BreakdownPeriod {
+  id: string;
+  breakdown_id: string;
+  order: number;
+  duration_seconds: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -109,5 +116,32 @@ export function useCreateBreakdownPlayer() {
         method: 'POST',
         body: data,
       }).then((r) => r.data),
+  });
+}
+
+export function useBreakdown(id: string) {
+  return useQuery<Breakdown>({
+    queryKey: ['breakdowns', id],
+    queryFn: () => apiFetch<{ data: Breakdown }>(`/breakdowns/${id}`).then((r) => r.data),
+  });
+}
+
+export function useBreakdownTeams(breakdownId: string) {
+  return useQuery<BreakdownTeam[]>({
+    queryKey: ['breakdowns', breakdownId, 'teams'],
+    queryFn: async () => {
+      const res = await apiFetch<PaginatedResponse<BreakdownTeam>>(`/breakdowns/${breakdownId}/teams`);
+      return res.data;
+    },
+  });
+}
+
+export function useBreakdownPlayers(breakdownId: string) {
+  return useQuery<BreakdownPlayer[]>({
+    queryKey: ['breakdowns', breakdownId, 'players'],
+    queryFn: async () => {
+      const res = await apiFetch<PaginatedResponse<BreakdownPlayer>>(`/breakdowns/${breakdownId}/players`);
+      return res.data;
+    },
   });
 }
