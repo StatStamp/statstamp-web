@@ -66,7 +66,7 @@ function StatsPlaceholder({ id, isOwner }: { id: string; isOwner: boolean }) {
           </p>
           {isOwner && (
             <Link
-              href={`/breakdowns/${id}/tag`}
+              href={`/breakdowns/${id}/stat-taker`}
               className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
             >
               Start tagging →
@@ -143,7 +143,7 @@ export function BreakdownContent({ id }: Props) {
                 {isOwner && (
                   <div className="flex gap-2">
                     <Link
-                      href={`/breakdowns/${id}/tag`}
+                      href={`/breakdowns/${id}/stat-taker`}
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 px-3 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors"
                     >
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -172,7 +172,7 @@ export function BreakdownContent({ id }: Props) {
                     <p className="text-sm text-zinc-400 dark:text-zinc-500">No events tagged yet.</p>
                     {isOwner && (
                       <Link
-                        href={`/breakdowns/${id}/tag`}
+                        href={`/breakdowns/${id}/stat-taker`}
                         className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         Open Stat Taker →
