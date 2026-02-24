@@ -66,13 +66,13 @@ export function WorkflowGrid({ teams, players, eventGroups, workflows }: Props) 
             onClick={handleStartLineup}
             className="w-full flex items-center justify-center gap-2 rounded-lg border border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/50 px-3 py-3 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="5" cy="4" r="2.5" className="stroke-current" strokeWidth="1.25" />
-              <circle cx="9" cy="4" r="2.5" className="stroke-current" strokeWidth="1.25" />
-              <path d="M1 11c0-2 1.8-3.5 4-3.5" className="stroke-current" strokeWidth="1.25" strokeLinecap="round" />
-              <path d="M13 11c0-2-1.8-3.5-4-3.5" className="stroke-current" strokeWidth="1.25" strokeLinecap="round" />
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-current" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1.5 4h9" />
+              <path d="M7.5 2l3 2-3 2" />
+              <path d="M12.5 10h-9" />
+              <path d="M6.5 8l-3 2 3 2" />
             </svg>
-            Update Lineup
+            Substitution
           </button>
         </div>
       )}

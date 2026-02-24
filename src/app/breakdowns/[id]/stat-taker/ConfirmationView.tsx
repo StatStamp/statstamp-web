@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { useCreateEventGroup, useCreateEvent } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
 import { useCollectionEventTypes } from '@/hooks/collections';
-import { useBreakdown } from '@/hooks/breakdowns';
+import { useBreakdown, BreakdownPlayer, BreakdownTeam } from '@/hooks/breakdowns';
 
 interface Props {
   breakdownId: string;
+  players: BreakdownPlayer[];
+  teams: BreakdownTeam[];
 }
 
-export function ConfirmationView({ breakdownId }: Props) {
+export function ConfirmationView({ breakdownId, players, teams }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const queuedEvents = useTaggingStore((s) => s.queuedEvents);
@@ -49,6 +51,16 @@ export function ConfirmationView({ breakdownId }: Props) {
     return { name: et?.name ?? eventTypeId, abbreviation: et?.abbreviation ?? '?' };
   }
 
+  function getParticipantMeta(participantId: string | null, participantIsTeam: boolean): { jersey: string | null; teamAbbr: string | null } {
+    if (!participantId || participantIsTeam) return { jersey: null, teamAbbr: null };
+    const player = players.find((p) => p.id === participantId);
+    const team = player?.breakdown_team_id ? teams.find((t) => t.id === player.breakdown_team_id) : null;
+    return {
+      jersey: player?.jersey_number ?? null,
+      teamAbbr: team?.team_abbreviation ?? team?.team_name ?? null,
+    };
+  }
+
   async function handleSubmit() {
     setSubmitError(null);
     try {
@@ -85,18 +97,25 @@ export function ConfirmationView({ breakdownId }: Props) {
         <div className="flex flex-col gap-1.5">
           {queuedEvents.map((qe, i) => {
             const { name, abbreviation } = getEventTypeName(qe.eventTypeId);
+            const { jersey, teamAbbr } = getParticipantMeta(qe.participantId, qe.participantIsTeam);
+            const metaParts = [jersey ? `#${jersey}` : null, teamAbbr].filter(Boolean);
             return (
               <div
                 key={i}
                 className="flex items-center gap-2 rounded-lg bg-zinc-800/60 px-3 py-2.5"
               >
-                <span className="text-xs font-mono font-semibold text-zinc-400 w-8 shrink-0">
+                <span className="text-xs font-mono font-semibold text-zinc-400 w-14 shrink-0 truncate">
                   {abbreviation}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-zinc-100 truncate">{name}</p>
                   {qe.participantName && (
-                    <p className="text-xs text-zinc-400 truncate">{qe.participantName}</p>
+                    <p className="text-xs text-zinc-400 truncate">
+                      {qe.participantName}
+                      {metaParts.length > 0 && (
+                        <span className="text-zinc-600 ml-1">· {metaParts.join(' · ')}</span>
+                      )}
+                    </p>
                   )}
                 </div>
               </div>
@@ -155,7 +174,7 @@ export function ConfirmationView({ breakdownId }: Props) {
           onClick={goBack}
           className="w-full flex items-center justify-center rounded-lg border border-zinc-700 hover:border-zinc-500 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
         >
-          ← Edit
+          <svg width="7" height="11" viewBox="0 0 7 11" fill="none" className="inline mr-1" aria-hidden="true"><path d="M5.5 1L1.5 5.5L5.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Edit
         </button>
       </div>
     </div>

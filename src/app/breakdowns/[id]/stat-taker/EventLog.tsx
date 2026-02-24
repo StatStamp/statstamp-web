@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BreakdownPlayer } from '@/hooks/breakdowns';
+import { BreakdownPlayer, BreakdownTeam } from '@/hooks/breakdowns';
 import { CollectionWorkflow } from '@/hooks/collections';
 import { EventGroup, useDeleteEventGroup } from '@/hooks/eventGroups';
 import { useCollectionEventTypes } from '@/hooks/collections';
@@ -12,6 +12,7 @@ interface Props {
   eventGroups: EventGroup[];
   workflows: CollectionWorkflow[];
   players: BreakdownPlayer[];
+  teams: BreakdownTeam[];
   seekRef: React.MutableRefObject<((seconds: number) => void) | null>;
 }
 
@@ -31,12 +32,12 @@ function TrashIcon() {
       xmlns="http://www.w3.org/2000/svg"
       className="stroke-current"
     >
-      <path d="M2 3.5h10M5.5 3.5V2.5a1 1 0 011-1h1a1 1 0 011 1v1M5 3.5l.5 8h3l.5-8" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 4h9M5.5 4V3a1 1 0 011-1h1a1 1 0 011 1v1M3.5 4l.5 8h6l.5-8" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-export function EventLog({ breakdownId, eventGroups, workflows, players, seekRef }: Props) {
+export function EventLog({ breakdownId, eventGroups, workflows, players, teams, seekRef }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const { data: breakdown } = useBreakdown(breakdownId);
   const { data: eventTypes = [] } = useCollectionEventTypes(breakdown?.collection_id ?? null);
@@ -57,9 +58,15 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, seekRef
     return eventTypes.find((e) => e.id === eventTypeId)?.abbreviation ?? '?';
   }
 
-  function getPlayerName(playerId: string | null): string | null {
-    if (!playerId) return null;
-    return players.find((p) => p.id === playerId)?.player_name ?? null;
+  function getPlayerMeta(playerId: string | null): { name: string | null; jersey: string | null; teamAbbr: string | null } {
+    if (!playerId) return { name: null, jersey: null, teamAbbr: null };
+    const player = players.find((p) => p.id === playerId);
+    const team = player?.breakdown_team_id ? teams.find((t) => t.id === player.breakdown_team_id) : null;
+    return {
+      name: player?.player_name ?? null,
+      jersey: player?.jersey_number ?? null,
+      teamAbbr: team?.team_abbreviation ?? team?.team_name ?? null,
+    };
   }
 
   async function handleDelete(groupId: string) {
@@ -107,13 +114,15 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, seekRef
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {activeEvents.map((e) => {
-                      const name = getPlayerName(e.breakdown_player_id);
+                      const { name, jersey, teamAbbr } = getPlayerMeta(e.breakdown_player_id);
                       return name ? (
                         <span
                           key={e.id}
-                          className="inline-block text-xs bg-zinc-800 text-zinc-300 rounded px-1.5 py-0.5"
+                          className="inline-flex items-center gap-1 text-xs bg-zinc-800 text-zinc-300 rounded px-1.5 py-0.5"
                         >
-                          {name}
+                          {jersey && <span className="font-mono text-zinc-500">#{jersey}</span>}
+                          <span>{name}</span>
+                          {teamAbbr && <span className="text-zinc-500">· {teamAbbr}</span>}
                         </span>
                       ) : null;
                     })}
@@ -128,7 +137,7 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, seekRef
                   <div className="flex flex-wrap gap-1">
                     {activeEvents.map((e) => {
                       const abbr = getEventTypeAbbreviation(e.event_type_id);
-                      const playerName = getPlayerName(e.breakdown_player_id);
+                      const { name, jersey, teamAbbr } = getPlayerMeta(e.breakdown_player_id);
                       return (
                         <span
                           key={e.id}
@@ -136,7 +145,9 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, seekRef
                           title={getEventTypeName(e.event_type_id)}
                         >
                           <span className="font-mono font-semibold text-zinc-400">{abbr}</span>
-                          {playerName && <span>{playerName}</span>}
+                          {jersey && <span className="font-mono text-zinc-500">#{jersey}</span>}
+                          {name && <span>{name}</span>}
+                          {teamAbbr && <span className="text-zinc-500">· {teamAbbr}</span>}
                         </span>
                       );
                     })}

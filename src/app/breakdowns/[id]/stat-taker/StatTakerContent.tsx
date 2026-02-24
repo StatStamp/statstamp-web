@@ -90,7 +90,7 @@ export function StatTakerContent({ id }: Props) {
       {/* Top bar */}
       <header className="h-12 flex items-center justify-between px-4 border-b border-zinc-800 shrink-0">
         <div className="flex items-center gap-3">
-          <AppLogoIcon className="w-6 h-6" />
+          <AppLogoIcon className="w-6 h-6 invert" />
           <span className="text-sm font-medium text-zinc-300 truncate max-w-xs">
             {breakdown.name}
           </span>
@@ -99,7 +99,7 @@ export function StatTakerContent({ id }: Props) {
           href={`/breakdowns/${id}`}
           className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
-          ← Exit
+          <svg width="7" height="11" viewBox="0 0 7 11" fill="none" className="inline mr-1" aria-hidden="true"><path d="M5.5 1L1.5 5.5L5.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Exit
         </Link>
       </header>
 
@@ -123,6 +123,7 @@ export function StatTakerContent({ id }: Props) {
               eventGroups={eventGroups}
               workflows={workflows}
               players={players}
+              teams={teams}
               seekRef={seekRef}
             />
           </div>
