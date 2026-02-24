@@ -1048,14 +1048,15 @@ export function EditBreakdownContent({ id }: Props) {
               {/* Mode toggle */}
               <div className="flex items-center gap-1 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 w-fit mb-5">
                 {(['matchup', 'players'] as const).map((mode) => {
-                  const isActive = mode === 'matchup' ? hasTeams : !hasTeams;
+                  const currentMode = pendingMode ?? (hasTeams ? 'matchup' : 'players');
+                  const isActive = mode === currentMode;
                   return (
                     <button
                       key={mode}
                       onClick={() => {
                         if (isActive) return;
-                        if (mode === 'players' && hasTeams) {
-                          setPendingMode('players');
+                        if (mode === 'players' && (hasTeams || pendingMode === 'matchup')) {
+                          setPendingMode(hasTeams ? 'players' : null);
                         } else if (mode === 'matchup' && !hasTeams) {
                           setPendingMode('matchup');
                         }
@@ -1072,7 +1073,7 @@ export function EditBreakdownContent({ id }: Props) {
                 })}
               </div>
 
-              {hasTeams ? (
+              {hasTeams || pendingMode === 'matchup' ? (
                 /* Matchup mode */
                 <div className="flex items-start gap-0">
                   {/* Away side */}
@@ -1138,12 +1139,6 @@ export function EditBreakdownContent({ id }: Props) {
                 />
               )}
 
-              {/* "Switching to matchup" flow: just prompt to add teams */}
-              {pendingMode === 'matchup' && (
-                <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-                  Use the team slots above to add teams to this breakdown.
-                </p>
-              )}
             </Section>
 
             {/* ── Danger Zone ── */}
