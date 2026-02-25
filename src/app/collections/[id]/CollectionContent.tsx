@@ -353,8 +353,14 @@ function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading, usedInWor
                   {isOwner && (
                     <td className="px-3 py-3 text-right">
                       {usedInWorkflows.has(et.id) ? (
-                        <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400 dark:text-zinc-500" title="Used in a workflow — cannot remove">
-                          In use
+                        <span
+                          title="Used in a workflow — cannot remove"
+                          className="inline-flex items-center justify-center w-6 h-6 text-zinc-300 dark:text-zinc-600"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                            <rect x="2" y="5.5" width="9" height="6.5" rx="1" strokeWidth="1.3" className="stroke-current" />
+                            <path d="M4 5.5V3.5a2.5 2.5 0 015 0v2" strokeWidth="1.3" strokeLinecap="round" className="stroke-current" />
+                          </svg>
                         </span>
                       ) : (
                         <button
@@ -549,7 +555,7 @@ function DuplicateModal({ collectionId, defaultName, defaultDescription, onClose
     nameRef.current?.select();
   }, []);
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     duplicate.mutate(
