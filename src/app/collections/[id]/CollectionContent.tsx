@@ -296,9 +296,10 @@ interface EventTypesTabProps {
   isOwner: boolean;
   eventTypes: CollectionEventType[] | undefined;
   isLoading: boolean;
+  usedInWorkflows: Set<string>;
 }
 
-function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading }: EventTypesTabProps) {
+function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading, usedInWorkflows }: EventTypesTabProps) {
   const [addOpen, setAddOpen] = useState(false);
   const removeEventType = useRemoveCollectionEventType(collectionId);
 
@@ -351,14 +352,20 @@ function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading }: EventTy
                   </td>
                   {isOwner && (
                     <td className="px-3 py-3 text-right">
-                      <button
-                        onClick={() => removeEventType.mutate(et.id)}
-                        disabled={removeEventType.isPending}
-                        title="Remove from template"
-                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition-colors"
-                      >
-                        <MinusIcon />
-                      </button>
+                      {usedInWorkflows.has(et.id) ? (
+                        <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400 dark:text-zinc-500" title="Used in a workflow — cannot remove">
+                          In use
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => removeEventType.mutate(et.id)}
+                          disabled={removeEventType.isPending}
+                          title="Remove from template"
+                          className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition-colors"
+                        >
+                          <MinusIcon />
+                        </button>
+                      )}
                     </td>
                   )}
                 </tr>
@@ -630,6 +637,15 @@ export function CollectionContent({ id }: Props) {
     ? [...workflows].sort((a, b) => a.display_order - b.display_order)
     : [];
 
+  // IDs of event types referenced in any workflow option — these cannot be removed.
+  const usedInWorkflows = new Set(
+    sorted.flatMap((wf) =>
+      wf.steps.flatMap((step) =>
+        step.options.map((opt) => opt.event_type_id).filter((id): id is string => id !== null),
+      ),
+    ),
+  );
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'event-types', label: 'Event Types' },
     { key: 'workflows', label: 'Workflows' },
@@ -730,6 +746,7 @@ export function CollectionContent({ id }: Props) {
                   isOwner={!!isOwner}
                   eventTypes={eventTypes}
                   isLoading={eventTypesLoading}
+                  usedInWorkflows={usedInWorkflows}
                 />
               )}
 
