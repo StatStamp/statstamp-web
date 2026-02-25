@@ -153,7 +153,7 @@ export function EditCollectionContent({ id }: Props) {
             <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Danger zone</h2>
             {(collection?.breakdowns_count ?? 0) > 0 ? (
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                This template cannot be deleted while it is used in {collection!.breakdowns_count} {collection!.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Remove those breakdowns first, or duplicate this template and delete the copy.
+                This template cannot be deleted while it is used in {collection!.breakdowns_count} {collection!.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Remove those breakdowns first, or duplicate this template.
               </p>
             ) : (
               <>
