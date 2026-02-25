@@ -151,16 +151,24 @@ export function EditCollectionContent({ id }: Props) {
 
           <div className="mt-10 rounded-xl border border-red-200 dark:border-red-900 p-4">
             <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Danger zone</h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-              Deleting a template is permanent and cannot be undone.
-            </p>
-            <button
-              onClick={handleDelete}
-              disabled={deleteCollection.isPending}
-              className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
-            >
-              {deleteCollection.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete template'}
-            </button>
+            {(collection?.breakdowns_count ?? 0) > 0 ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                This template cannot be deleted while it is used in {collection!.breakdowns_count} {collection!.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Remove those breakdowns first, or duplicate this template and delete the copy.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                  Deleting a template is permanent and cannot be undone.
+                </p>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleteCollection.isPending}
+                  className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
+                >
+                  {deleteCollection.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete template'}
+                </button>
+              </>
+            )}
           </div>
 
         </div>
