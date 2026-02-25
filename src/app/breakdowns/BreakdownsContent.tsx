@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAllBreakdowns, useMyBreakdowns } from '@/hooks/breakdowns';
-
-interface Props {
-  defaultMine: boolean;
-}
+import { useMyBreakdowns } from '@/hooks/breakdowns';
 
 function SearchIcon() {
   return (
@@ -35,10 +31,9 @@ function formatDate(iso: string) {
   });
 }
 
-export function BreakdownsContent({ defaultMine }: Props) {
+export function BreakdownsContent() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [filter, setFilter] = useState<'all' | 'mine'>(defaultMine ? 'mine' : 'all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -49,27 +44,13 @@ export function BreakdownsContent({ defaultMine }: Props) {
   }, [search]);
 
   useEffect(() => {
-    if (!authLoading && !user && filter === 'mine') {
-      router.replace('/login');
-    }
-  }, [authLoading, user, filter, router]);
+    if (!authLoading && !user) router.replace('/login');
+  }, [authLoading, user, router]);
 
-  function handleFilterChange(newFilter: 'all' | 'mine') {
-    if (newFilter === 'mine' && !authLoading && !user) {
-      router.push('/login');
-      return;
-    }
-    setFilter(newFilter);
-    const params = new URLSearchParams();
-    if (newFilter === 'mine') params.set('mine', '1');
-    router.replace(`/breakdowns${params.toString() ? `?${params}` : ''}`);
-  }
-
-  const allQuery = useAllBreakdowns(debouncedSearch, filter === 'all');
-  const mineQuery = useMyBreakdowns(debouncedSearch, filter === 'mine' && !authLoading && !!user);
-
-  const activeQuery = filter === 'all' ? allQuery : mineQuery;
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = activeQuery;
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useMyBreakdowns(
+    debouncedSearch,
+    !authLoading && !!user,
+  );
 
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -90,7 +71,7 @@ export function BreakdownsContent({ defaultMine }: Props) {
 
   const breakdowns = data?.pages.flatMap((p) => p.data) ?? [];
 
-  if (filter === 'mine' && (authLoading || !user)) {
+  if (authLoading || !user) {
     return (
       <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
         <Nav />
@@ -109,45 +90,20 @@ export function BreakdownsContent({ defaultMine }: Props) {
         <div className="max-w-6xl mx-auto px-6 py-8">
 
           <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">
-            Breakdowns
+            My Breakdowns
           </h1>
 
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden shrink-0">
-              <button
-                onClick={() => handleFilterChange('all')}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  filter === 'all'
-                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => handleFilterChange('mine')}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors border-l border-zinc-200 dark:border-zinc-800 ${
-                  filter === 'mine'
-                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
-                }`}
-              >
-                Mine
-              </button>
-            </div>
-
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <SearchIcon />
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={filter === 'mine' ? 'Search your breakdowns…' : 'Search all breakdowns…'}
-                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition"
-              />
-            </div>
+          <div className="relative mb-6">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <SearchIcon />
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search your breakdowns…"
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition"
+            />
           </div>
 
           {isLoading ? (
@@ -183,9 +139,6 @@ export function BreakdownsContent({ defaultMine }: Props) {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                           Video
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                          Owner
-                        </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                           Created
                         </th>
@@ -212,9 +165,6 @@ export function BreakdownsContent({ defaultMine }: Props) {
                           </td>
                           <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 max-w-xs truncate">
                             {b.video_title ?? <span className="text-zinc-400 dark:text-zinc-600">—</span>}
-                          </td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                            {b.user_name}
                           </td>
                           <td className="px-4 py-3 text-zinc-500 dark:text-zinc-500 whitespace-nowrap">
                             {formatDate(b.created_at)}

@@ -21,7 +21,7 @@ function NavLink({
   onClick?: () => void;
 }) {
   const pathname = usePathname();
-  const isActive = pathname === href;
+  const isActive = href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/');
 
   return (
     <Link
@@ -57,15 +57,31 @@ function NavItems({ onAction }: { onAction?: () => void }) {
 
   return (
     <>
-      <div className="flex-1 p-3 space-y-1">
+      <div className="flex-1 p-3 space-y-1 overflow-y-auto">
         <NavLink href="/" onClick={onAction}>Explore</NavLink>
+
+        {user && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                My Library
+              </p>
+            </div>
+            <NavLink href="/videos" onClick={onAction}>Videos</NavLink>
+            <NavLink href="/breakdowns" onClick={onAction}>Breakdowns</NavLink>
+            <NavLink href="/collections" onClick={onAction}>Collections</NavLink>
+            <NavLink href="/event-types" onClick={onAction}>Event Types</NavLink>
+            <NavLink href="/teams" onClick={onAction}>Teams</NavLink>
+            <NavLink href="/players" onClick={onAction}>Players</NavLink>
+          </>
+        )}
       </div>
 
-      <div className="p-3 space-y-1 border-t border-zinc-200 dark:border-zinc-800">
+      <div className="p-3 space-y-1 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
         {user ? (
           <>
             <p className="px-3 py-2 text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-              Hello, {user.name}
+              {user.name}
             </p>
             <button
               onClick={handleLogout}
