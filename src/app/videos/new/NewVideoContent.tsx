@@ -7,7 +7,7 @@ import { Nav } from '@/components/Nav';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { VideoFormFields } from '@/components/VideoFormFields';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCreateVideo } from '@/hooks/videos';
+import { useCreateVideo, useVideoBySourceIdentifier } from '@/hooks/videos';
 import type { ApiError } from '@/lib/api';
 
 function extractYoutubeId(url: string): string | null {
@@ -44,6 +44,8 @@ export function NewVideoContent() {
   const [urlError, setUrlError] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+
+  const { data: existingVideo } = useVideoBySourceIdentifier(youtubeId);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
@@ -140,6 +142,37 @@ export function NewVideoContent() {
                 )}
               </div>
             </Section>
+
+            {existingVideo && (
+              <div className="flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-4 py-3">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400"
+                >
+                  <path
+                    d="M8 1.5L14.5 13H1.5L8 1.5Z"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="stroke-current"
+                  />
+                  <path d="M8 6v3.5M8 11.5v.5" strokeWidth="1.4" strokeLinecap="round" className="stroke-current" />
+                </svg>
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  This video is already on StatStamp.{' '}
+                  <Link
+                    href={`/videos/${existingVideo.id}`}
+                    className="font-medium underline underline-offset-2 hover:no-underline"
+                  >
+                    View existing video
+                  </Link>
+                </p>
+              </div>
+            )}
 
             <Section title="Details">
               <VideoFormFields
