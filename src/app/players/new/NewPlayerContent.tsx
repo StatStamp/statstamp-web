@@ -15,7 +15,6 @@ export function NewPlayerContent() {
 
   const [name, setName] = useState('');
   const [number, setNumber] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -37,7 +36,7 @@ export function NewPlayerContent() {
     e.preventDefault();
     setError('');
     createPlayer.mutate(
-      { name: name.trim(), number: number.trim() || null, is_public: isPublic },
+      { name: name.trim(), number: number.trim() || null },
       {
         onSuccess: (player) => {
           router.push(`/players/${player.id}`);
@@ -93,20 +92,6 @@ export function NewPlayerContent() {
                 maxLength={10}
                 className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition"
               />
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Public</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Allow others to use this player in their breakdowns</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPublic(!isPublic)}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors focus:outline-none ${isPublic ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white dark:bg-zinc-900 shadow transition-transform mt-0.5 ${isPublic ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </button>
             </div>
 
             {error && (
