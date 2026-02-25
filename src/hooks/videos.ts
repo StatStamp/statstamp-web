@@ -63,6 +63,16 @@ export function useVideo(id: string) {
   });
 }
 
+export function useVideoBySourceIdentifier(sourceIdentifier: string | null) {
+  return useQuery<Video | null>({
+    queryKey: ['videos', 'by-source', sourceIdentifier],
+    queryFn: () =>
+      apiFetch<PaginatedResponse<Video>>(`/videos?source_identifier=${sourceIdentifier}`)
+        .then((r) => r.data[0] ?? null),
+    enabled: !!sourceIdentifier,
+  });
+}
+
 export function useCreateVideo() {
   const queryClient = useQueryClient();
   return useMutation({
