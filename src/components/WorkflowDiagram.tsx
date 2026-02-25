@@ -321,7 +321,7 @@ export function WorkflowDiagram({
         elementsSelectable={isEditing}
         zoomOnScroll={false}
         panOnScroll={true}
-        panOnDrag={true}
+        panOnDrag={false}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         proOptions={{ hideAttribution: true }}
