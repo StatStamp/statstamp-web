@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { VideoCard } from '@/components/VideoCard';
 import { usePublicVideos } from '@/hooks/videos';
@@ -12,9 +13,17 @@ export default function Home() {
       <Nav />
       <main className="flex-1 overflow-y-auto">
         <div className="p-8">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-            Recent Videos
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              Recent Videos
+            </h2>
+            <Link
+              href="/videos"
+              className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              View all
+            </Link>
+          </div>
 
           {isLoading && (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
