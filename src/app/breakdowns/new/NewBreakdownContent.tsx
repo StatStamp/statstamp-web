@@ -642,6 +642,27 @@ function TeamSlot({
   );
 }
 
+function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
+      <label className="flex items-center gap-1.5 cursor-pointer">
+        <span
+          className="w-6 h-6 rounded border border-zinc-200 dark:border-zinc-700 shrink-0"
+          style={{ backgroundColor: value }}
+        />
+        <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{value}</span>
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="sr-only"
+        />
+      </label>
+    </div>
+  );
+}
+
 function MatchupDivider() {
   return (
     <div className="relative flex flex-col items-center justify-center w-10 shrink-0 self-stretch">
@@ -842,6 +863,8 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
   const [teamModalSide, setTeamModalSide] = useState<'away' | 'home' | null>(null);
   const [awayTeam, setAwayTeam] = useState<Team | null>(null);
   const [homeTeam, setHomeTeam] = useState<Team | null>(null);
+  const [awayColor, setAwayColor] = useState('#000000');
+  const [homeColor, setHomeColor] = useState('#ffffff');
   const [awayRoster, setAwayRoster] = useState<RosterEntry[]>([]);
   const [homeRoster, setHomeRoster] = useState<RosterEntry[]>([]);
   const [playersRoster, setPlayersRoster] = useState<RosterEntry[]>([]);
@@ -975,18 +998,19 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
       }
 
       if (participantMode === 'matchup') {
-        const sides: [Team | null, RosterEntry[], 'away' | 'home'][] = [
-          [awayTeam, awayRoster, 'away'],
-          [homeTeam, homeRoster, 'home'],
+        const sides: [Team | null, RosterEntry[], 'away' | 'home', string][] = [
+          [awayTeam, awayRoster, 'away', awayColor],
+          [homeTeam, homeRoster, 'home', homeColor],
         ];
 
-        for (const [team, roster, side] of sides) {
+        for (const [team, roster, side, color] of sides) {
           if (!team) continue;
 
           const btRecord = await createBreakdownTeam.mutateAsync({
             breakdownId: bd.id,
             team_id: team.id,
             home_away: side,
+            color,
           });
 
           for (const entry of roster) {
@@ -1250,6 +1274,9 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                   <div className="flex flex-col gap-4 flex-1 min-w-0">
                     <TeamSlot side="away" selectedTeam={awayTeam} onSelect={() => setTeamModalSide('away')} />
                     {awayTeam && (
+                      <ColorPicker label="Jersey Color" value={awayColor} onChange={setAwayColor} />
+                    )}
+                    {awayTeam && (
                       <TeamRoster
                         roster={awayRoster}
                         onChange={setAwayRoster}
@@ -1265,6 +1292,9 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                   {/* Home side */}
                   <div className="flex flex-col gap-4 flex-1 min-w-0">
                     <TeamSlot side="home" selectedTeam={homeTeam} onSelect={() => setTeamModalSide('home')} />
+                    {homeTeam && (
+                      <ColorPicker label="Jersey Color" value={homeColor} onChange={setHomeColor} />
+                    )}
                     {homeTeam && (
                       <TeamRoster
                         roster={homeRoster}
