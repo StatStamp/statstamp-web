@@ -39,6 +39,23 @@ export function usePublicVideos() {
   });
 }
 
+export function useAllVideos(search: string, enabled = true) {
+  return useInfiniteQuery<PaginatedResponse<Video>>({
+    queryKey: ['videos', 'all', search],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ page: String(pageParam) });
+      if (search) params.set('search', search);
+      return apiFetch<PaginatedResponse<Video>>(`/videos?${params}`);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.current_page < lastPage.meta.last_page
+        ? lastPage.meta.current_page + 1
+        : undefined,
+    enabled,
+  });
+}
+
 export function useMyVideos(search: string, enabled = true) {
   return useInfiniteQuery<PaginatedResponse<Video>>({
     queryKey: ['videos', 'mine', search],

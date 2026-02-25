@@ -1,5 +1,10 @@
-import { MyVideosContent } from './MyVideosContent';
+import { VideosContent } from './MyVideosContent';
 
-export default function MyVideosPage() {
-  return <MyVideosContent />;
+interface PageProps {
+  searchParams: Promise<{ mine?: string }>;
+}
+
+export default async function VideosPage({ searchParams }: PageProps) {
+  const { mine } = await searchParams;
+  return <VideosContent defaultMine={mine === '1'} />;
 }
