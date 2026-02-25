@@ -9,6 +9,7 @@ export interface Team {
   abbreviation: string | null;
   color: string | null;
   is_public: boolean;
+  breakdown_teams_count?: number;
   created_at: string;
   updated_at: string;
 }

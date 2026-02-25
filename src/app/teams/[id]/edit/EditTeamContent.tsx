@@ -23,7 +23,6 @@ export function EditTeamContent({ id }: Props) {
   const [leagueName, setLeagueName] = useState('');
   const [abbreviation, setAbbreviation] = useState('');
   const [color, setColor] = useState('#ffffff');
-  const [isPublic, setIsPublic] = useState(true);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -37,7 +36,6 @@ export function EditTeamContent({ id }: Props) {
       setLeagueName(team.league_name ?? '');
       setAbbreviation(team.abbreviation ?? '');
       setColor(team.color ?? '#ffffff');
-      setIsPublic(team.is_public);
     }
   }, [team]);
 
@@ -67,7 +65,6 @@ export function EditTeamContent({ id }: Props) {
         league_name: leagueName.trim() || null,
         abbreviation: abbreviation.trim() || null,
         color: color || null,
-        is_public: isPublic,
       },
       {
         onSuccess: () => {
@@ -164,20 +161,6 @@ export function EditTeamContent({ id }: Props) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Public</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Allow others to use this team in their breakdowns</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPublic(!isPublic)}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors focus:outline-none ${isPublic ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white dark:bg-zinc-900 shadow transition-transform mt-0.5 ${isPublic ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-
             {error && (
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             )}
@@ -204,13 +187,19 @@ export function EditTeamContent({ id }: Props) {
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
               Deleting a team is permanent and cannot be undone.
             </p>
-            <button
-              onClick={handleDelete}
-              disabled={deleteTeam.isPending}
-              className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
-            >
-              {deleteTeam.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete team'}
-            </button>
+            {(team.breakdown_teams_count ?? 0) > 0 ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                This team cannot be deleted because it is used in {team.breakdown_teams_count} breakdown{team.breakdown_teams_count === 1 ? '' : 's'}.
+              </p>
+            ) : (
+              <button
+                onClick={handleDelete}
+                disabled={deleteTeam.isPending}
+                className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
+              >
+                {deleteTeam.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete team'}
+              </button>
+            )}
           </div>
 
         </div>
