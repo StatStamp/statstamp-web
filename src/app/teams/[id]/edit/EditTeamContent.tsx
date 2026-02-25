@@ -45,7 +45,7 @@ export function EditTeamContent({ id }: Props) {
     }
   }, [isLoading, team, user, id, router]);
 
-  if (authLoading || !user || isLoading) {
+  if (authLoading || !user || isLoading || !team) {
     return (
       <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
         <Nav />
