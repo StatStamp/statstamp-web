@@ -148,3 +148,131 @@ export function useCollectionEventTypes(collectionId: string | null) {
     enabled: collectionId !== null,
   });
 }
+
+// ── Workflow mutations ────────────────────────────────────────────────────────
+
+function invalidateWorkflows(queryClient: ReturnType<typeof useQueryClient>, collectionId: string) {
+  queryClient.invalidateQueries({ queryKey: ['collections', collectionId, 'workflows'] });
+}
+
+export function useCreateWorkflow(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<CollectionWorkflow, ApiError, { name: string; display_order: number }>({
+    mutationFn: (data) =>
+      apiFetch<{ data: CollectionWorkflow }>(`/collections/${collectionId}/workflows`, {
+        method: 'POST',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+export function useUpdateWorkflow(collectionId: string, workflowId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<CollectionWorkflow, ApiError, { name?: string; display_order?: number; first_step_id?: string | null }>({
+    mutationFn: (data) =>
+      apiFetch<{ data: CollectionWorkflow }>(`/collections/${collectionId}/workflows/${workflowId}`, {
+        method: 'PATCH',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+export function useDeleteWorkflow(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (workflowId) =>
+      apiFetch(`/collections/${collectionId}/workflows/${workflowId}`, { method: 'DELETE' }).then(() => undefined),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+// ── Step mutations ────────────────────────────────────────────────────────────
+
+export function useCreateWorkflowStep(collectionId: string, workflowId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<WorkflowStep, ApiError, { prompt: string; type?: string }>({
+    mutationFn: (data) =>
+      apiFetch<{ data: WorkflowStep }>(
+        `/collections/${collectionId}/workflows/${workflowId}/steps`,
+        { method: 'POST', body: data },
+      ).then((r) => r.data),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+export function useUpdateWorkflowStep(collectionId: string, workflowId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<WorkflowStep, ApiError, { stepId: string; prompt?: string }>({
+    mutationFn: ({ stepId, ...data }) =>
+      apiFetch<{ data: WorkflowStep }>(
+        `/collections/${collectionId}/workflows/${workflowId}/steps/${stepId}`,
+        { method: 'PATCH', body: data },
+      ).then((r) => r.data),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+export function useDeleteWorkflowStep(collectionId: string, workflowId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (stepId) =>
+      apiFetch(
+        `/collections/${collectionId}/workflows/${workflowId}/steps/${stepId}`,
+        { method: 'DELETE' },
+      ).then(() => undefined),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+// ── Option mutations ──────────────────────────────────────────────────────────
+
+export interface WorkflowOptionInput {
+  label: string;
+  display_order: number;
+  next_step_id?: string | null;
+  event_type_id?: string | null;
+  collect_participant?: boolean;
+  participant_prompt?: string | null;
+  participant_copy_step_id?: string | null;
+  collect_coordinate?: boolean;
+  coordinate_prompt?: string | null;
+  coordinate_image_id?: string | null;
+}
+
+export function useCreateWorkflowOption(collectionId: string, workflowId: string, stepId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<WorkflowOption, ApiError, WorkflowOptionInput>({
+    mutationFn: (data) =>
+      apiFetch<{ data: WorkflowOption }>(
+        `/collections/${collectionId}/workflows/${workflowId}/steps/${stepId}/options`,
+        { method: 'POST', body: data },
+      ).then((r) => r.data),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+export function useUpdateWorkflowOption(collectionId: string, workflowId: string, stepId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<WorkflowOption, ApiError, { optionId: string } & Partial<WorkflowOptionInput>>({
+    mutationFn: ({ optionId, ...data }) =>
+      apiFetch<{ data: WorkflowOption }>(
+        `/collections/${collectionId}/workflows/${workflowId}/steps/${stepId}/options/${optionId}`,
+        { method: 'PATCH', body: data },
+      ).then((r) => r.data),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+export function useDeleteWorkflowOption(collectionId: string, workflowId: string, stepId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (optionId) =>
+      apiFetch(
+        `/collections/${collectionId}/workflows/${workflowId}/steps/${stepId}/options/${optionId}`,
+        { method: 'DELETE' },
+      ).then(() => undefined),
+    onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
