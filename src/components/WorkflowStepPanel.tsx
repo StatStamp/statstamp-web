@@ -399,6 +399,66 @@ function StepPanel({ step, workflow, collectionId, eventTypes, onClose }: StepPa
   );
 }
 
+// ── Read-only step panel ──────────────────────────────────────────────────────
+
+interface ReadOnlyStepPanelProps {
+  step: WorkflowStep;
+  workflow: CollectionWorkflow;
+  eventTypes: CollectionEventType[];
+  onClose: () => void;
+}
+
+function ReadOnlyStepPanel({ step, workflow, eventTypes, onClose }: ReadOnlyStepPanelProps) {
+  const etMap = new Map(eventTypes.map((et) => [et.id, et]));
+  const stepIndex = workflow.steps.indexOf(step) + 1;
+  const sortedOptions = step.options.slice().sort((a, b) => a.display_order - b.display_order);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Step {stepIndex}</h3>
+        <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+          <CloseIcon />
+        </button>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">Prompt</p>
+        <p className="text-sm text-zinc-900 dark:text-zinc-100">{step.prompt}</p>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">Options</p>
+        {sortedOptions.length === 0 ? (
+          <p className="text-xs text-zinc-400 dark:text-zinc-600 italic">No options.</p>
+        ) : (
+          <div className="space-y-2">
+            {sortedOptions.map((opt) => {
+              const et = opt.event_type_id ? etMap.get(opt.event_type_id) : null;
+              const nextStep = opt.next_step_id ? workflow.steps.find((s) => s.id === opt.next_step_id) : null;
+              const nextStepIndex = nextStep ? workflow.steps.indexOf(nextStep) + 1 : null;
+              return (
+                <div key={opt.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 bg-zinc-50 dark:bg-zinc-900/50 space-y-1">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{opt.label}</p>
+                  {et && <p className="text-xs text-zinc-500 dark:text-zinc-400">Records: {et.name} ({et.abbreviation})</p>}
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {opt.next_step_id ? `Goes to Step ${nextStepIndex}` : 'Terminal (Done)'}
+                  </p>
+                  {opt.collect_participant && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      👤 Collects participant{opt.participant_prompt ? `: "${opt.participant_prompt}"` : ''}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Public export ─────────────────────────────────────────────────────────────
 
 export interface WorkflowStepPanelProps {
@@ -407,7 +467,8 @@ export interface WorkflowStepPanelProps {
   eventTypes: CollectionEventType[];
   selectedStepId: string | null;
   onClose: () => void;
-  onDeleteWorkflow: () => void;
+  onDeleteWorkflow?: () => void;
+  readOnly?: boolean;
 }
 
 export function WorkflowStepPanel({
@@ -417,8 +478,23 @@ export function WorkflowStepPanel({
   selectedStepId,
   onClose,
   onDeleteWorkflow,
+  readOnly = false,
 }: WorkflowStepPanelProps) {
   const selectedStep = workflow.steps.find((s) => s.id === selectedStepId) ?? null;
+
+  if (readOnly) {
+    if (!selectedStep) return null;
+    return (
+      <div className="w-72 shrink-0 overflow-y-auto border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-4">
+        <ReadOnlyStepPanel
+          step={selectedStep}
+          workflow={workflow}
+          eventTypes={eventTypes}
+          onClose={onClose}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-72 shrink-0 overflow-y-auto border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-4">
@@ -436,7 +512,7 @@ export function WorkflowStepPanel({
           workflow={workflow}
           steps={workflow.steps}
           collectionId={collectionId}
-          onDeleteWorkflow={onDeleteWorkflow}
+          onDeleteWorkflow={onDeleteWorkflow!}
           onClose={onClose}
         />
       )}

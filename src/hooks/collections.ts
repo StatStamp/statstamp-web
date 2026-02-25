@@ -7,6 +7,7 @@ export interface Collection {
   name: string;
   description: string | null;
   is_public: boolean;
+  breakdowns_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -274,5 +275,18 @@ export function useDeleteWorkflowOption(collectionId: string, workflowId: string
         { method: 'DELETE' },
       ).then(() => undefined),
     onSuccess: () => invalidateWorkflows(queryClient, collectionId),
+  });
+}
+
+// ── Duplicate ─────────────────────────────────────────────────────────────────
+
+export function useDuplicateCollection() {
+  const queryClient = useQueryClient();
+  return useMutation<Collection, ApiError, { id: string; name: string; description?: string | null }>({
+    mutationFn: ({ id, ...body }) =>
+      apiFetch<{ data: Collection }>(`/collections/${id}/duplicate`, { method: 'POST', body }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
   });
 }

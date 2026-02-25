@@ -78,8 +78,10 @@ function StepNode({ data }: NodeProps<Node<StepNodeData>>) {
         data.isEntry
           ? 'border-l-4 border-l-green-500 border-zinc-200 dark:border-zinc-700'
           : 'border-zinc-200 dark:border-zinc-700',
-        data.isEditing
-          ? 'cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-500 hover:shadow-md transition-all'
+        data.onClick
+          ? data.isEditing
+            ? 'cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-500 hover:shadow-md transition-all'
+            : 'cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors'
           : '',
       ].join(' ')}
       style={{ width: NODE_WIDTH }}
@@ -211,7 +213,7 @@ function buildNodesAndEdges(
         prompt: step.prompt,
         isEntry: step.id === first_step_id,
         isEditing,
-        onClick: isEditing && onStepClick ? () => onStepClick(step.id) : undefined,
+        onClick: onStepClick ? () => onStepClick(step.id) : undefined,
       } satisfies StepNodeData,
     });
 
