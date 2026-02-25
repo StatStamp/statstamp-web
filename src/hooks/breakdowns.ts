@@ -53,6 +53,53 @@ interface PaginatedResponse<T> {
   data: T[];
 }
 
+export interface BreakdownStatsByEntity {
+  total: number | null;
+  by_period: Record<string, number | null>;
+}
+
+export interface EventCountEntry {
+  event_type_id: string;
+  name: string;
+  abbreviation: string;
+  total: number;
+  by_period: Record<string, number>;
+  by_team: Record<string, BreakdownStatsByEntity>;
+  by_player: Record<string, BreakdownStatsByEntity>;
+}
+
+export interface StatEntry {
+  stat_id: string;
+  name: string;
+  abbreviation: string;
+  type: string;
+  total: number | null;
+  by_period: Record<string, number | null>;
+  by_team: Record<string, BreakdownStatsByEntity>;
+  by_player: Record<string, BreakdownStatsByEntity>;
+}
+
+export interface BreakdownStatsData {
+  periods: Array<{ period: number; ends_at: number }>;
+  event_counts: Record<string, EventCountEntry>;
+  stats: Record<string, StatEntry>;
+}
+
+export interface BreakdownStatsSnapshot {
+  breakdown_id: string;
+  is_stale: boolean;
+  computed_at: string | null;
+  data: BreakdownStatsData | null;
+}
+
+export function useBreakdownStats(breakdownId: string) {
+  return useQuery<BreakdownStatsSnapshot>({
+    queryKey: ['breakdowns', breakdownId, 'stats'],
+    queryFn: () =>
+      apiFetch<{ data: BreakdownStatsSnapshot }>(`/breakdowns/${breakdownId}/stats`).then((r) => r.data),
+  });
+}
+
 export function useVideoBreakdowns(videoId: string) {
   return useQuery<Breakdown[]>({
     queryKey: ['breakdowns', 'video', videoId],

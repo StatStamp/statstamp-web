@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { YouTubePlayer } from '@/components/YouTubePlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { useBreakdown } from '@/hooks/breakdowns';
+import { useBreakdown, useBreakdownPlayers, useBreakdownStats } from '@/hooks/breakdowns';
 
 interface Props {
   id: string;
@@ -47,20 +47,43 @@ function VideoBackLink({
 }
 
 
-function StatsPlaceholder({ id, isOwner }: { id: string; isOwner: boolean }) {
-  return (
-    <div className="mt-8">
-      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-4">
-        Stats
-      </p>
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        <div className="grid grid-cols-5 gap-0 bg-zinc-100 dark:bg-zinc-800/60 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-          <div className="col-span-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Player</div>
-          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 text-center">PTS</div>
-          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 text-center">REB</div>
-          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 text-center">AST</div>
+function fmtStat(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  if (Number.isInteger(value)) return value.toString();
+  return value.toFixed(3);
+}
+
+function StatsTable({ id, isOwner }: { id: string; isOwner: boolean }) {
+  const { data: snapshot, isLoading } = useBreakdownStats(id);
+  const { data: players } = useBreakdownPlayers(id);
+
+  const playerMap = new Map(players?.map((p) => [p.id, p]) ?? []);
+  const statsData = snapshot?.data;
+  const hasEvents =
+    statsData && Object.values(statsData.event_counts).some((ec) => ec.total > 0);
+
+  const header = (
+    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+      Stats
+    </p>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="mt-8 space-y-4">
+        {header}
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-4 py-8 text-center">
+          <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading stats…</p>
         </div>
-        <div className="px-4 py-8 text-center">
+      </div>
+    );
+  }
+
+  if (!hasEvents) {
+    return (
+      <div className="mt-8 space-y-4">
+        {header}
+        <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-8 text-center">
           <p className="text-sm text-zinc-400 dark:text-zinc-500">
             Stats will appear here once events are tagged.
           </p>
@@ -72,6 +95,126 @@ function StatsPlaceholder({ id, isOwner }: { id: string; isOwner: boolean }) {
               Start tagging →
             </Link>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  const eventCols = Object.values(statsData!.event_counts).sort((a, b) =>
+    a.abbreviation.localeCompare(b.abbreviation),
+  );
+  const statCols = Object.values(statsData!.stats);
+
+  // Collect all breakdown_player_ids that appear in any column
+  const playerIds = new Set<string>();
+  eventCols.forEach((ec) => Object.keys(ec.by_player).forEach((pid) => playerIds.add(pid)));
+  statCols.forEach((sc) => Object.keys(sc.by_player).forEach((pid) => playerIds.add(pid)));
+
+  const sortedPlayerIds = [...playerIds].sort((a, b) =>
+    (playerMap.get(a)?.player_name ?? '').localeCompare(playerMap.get(b)?.player_name ?? ''),
+  );
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center justify-between mb-4">
+        {header}
+        {snapshot?.is_stale && (
+          <span className="text-xs font-medium text-amber-500 dark:text-amber-400">Updating…</span>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-zinc-100 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-700">
+                <th className="text-left px-4 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                  Player
+                </th>
+                {eventCols.map((ec) => (
+                  <th
+                    key={ec.event_type_id}
+                    title={ec.name}
+                    className="px-3 py-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400 text-center whitespace-nowrap"
+                  >
+                    {ec.abbreviation}
+                  </th>
+                ))}
+                {statCols.length > 0 && (
+                  <>
+                    <th className="w-px p-0 bg-zinc-300 dark:bg-zinc-600" />
+                    {statCols.map((sc) => (
+                      <th
+                        key={sc.stat_id}
+                        title={sc.name}
+                        className="px-3 py-2 text-xs font-semibold text-indigo-500 dark:text-indigo-400 text-center whitespace-nowrap"
+                      >
+                        {sc.abbreviation}
+                      </th>
+                    ))}
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {sortedPlayerIds.map((bpId) => (
+                <tr key={bpId} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                  <td className="px-4 py-2 font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                    {playerMap.get(bpId)?.player_name ?? '—'}
+                  </td>
+                  {eventCols.map((ec) => (
+                    <td
+                      key={ec.event_type_id}
+                      className="px-3 py-2 text-center tabular-nums text-zinc-600 dark:text-zinc-400"
+                    >
+                      {ec.by_player[bpId]?.total ?? 0}
+                    </td>
+                  ))}
+                  {statCols.length > 0 && (
+                    <>
+                      <td className="w-px p-0 bg-zinc-200 dark:bg-zinc-700" />
+                      {statCols.map((sc) => (
+                        <td
+                          key={sc.stat_id}
+                          className="px-3 py-2 text-center tabular-nums text-zinc-600 dark:text-zinc-400"
+                        >
+                          {fmtStat(sc.by_player[bpId]?.total)}
+                        </td>
+                      ))}
+                    </>
+                  )}
+                </tr>
+              ))}
+
+              {/* Total row */}
+              <tr className="border-t-2 border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/30">
+                <td className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
+                  Total
+                </td>
+                {eventCols.map((ec) => (
+                  <td
+                    key={ec.event_type_id}
+                    className="px-3 py-2 text-center tabular-nums font-semibold text-zinc-700 dark:text-zinc-300"
+                  >
+                    {ec.total}
+                  </td>
+                ))}
+                {statCols.length > 0 && (
+                  <>
+                    <td className="w-px p-0 bg-zinc-200 dark:bg-zinc-700" />
+                    {statCols.map((sc) => (
+                      <td
+                        key={sc.stat_id}
+                        className="px-3 py-2 text-center tabular-nums font-semibold text-zinc-700 dark:text-zinc-300"
+                      >
+                        {fmtStat(sc.total)}
+                      </td>
+                    ))}
+                  </>
+                )}
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -101,7 +244,7 @@ export function BreakdownContent({ id }: Props) {
 
               {/* Stats — desktop only here; mobile copy lives after the right panel */}
               <div className="hidden lg:block">
-                <StatsPlaceholder id={id} isOwner={isOwner} />
+                <StatsTable id={id} isOwner={isOwner} />
               </div>
             </>
           )}
@@ -190,7 +333,7 @@ export function BreakdownContent({ id }: Props) {
         {/* ── Stats — mobile only, appears after the right panel ── */}
         {breakdown && (
           <div className="lg:hidden px-6 pb-8 bg-zinc-50 dark:bg-zinc-950">
-            <StatsPlaceholder id={id} isOwner={isOwner} />
+            <StatsTable id={id} isOwner={isOwner} />
           </div>
         )}
 
