@@ -82,6 +82,9 @@ function StepNode({ data }: NodeProps<Node<StepNodeData>>) {
       <p className="font-medium leading-snug line-clamp-3">{data.prompt}</p>
       <Handle type="target" position={Position.Left} className="!bg-zinc-400 dark:!bg-zinc-500 !w-2 !h-2" />
       <Handle type="source" position={Position.Right} className="!bg-zinc-400 dark:!bg-zinc-500 !w-2 !h-2" />
+      {/* Extra handles on the bottom for back-edge routing (circular references) */}
+      <Handle id="bottom-source" type="source" position={Position.Bottom} className="!bg-zinc-400 dark:!bg-zinc-500 !w-2 !h-2" />
+      <Handle id="bottom-target" type="target" position={Position.Bottom} className="!bg-zinc-400 dark:!bg-zinc-500 !w-2 !h-2" />
     </div>
   );
 }
@@ -179,15 +182,14 @@ function buildNodesAndEdges(
         if (et) parts.push(`[${et.abbreviation}]`);
       }
       if (opt.collect_participant) parts.push('👤');
-      if (opt.participant_copy_step_id) {
-        const fromIdx = stepIndex.get(opt.participant_copy_step_id);
-        if (fromIdx) parts.push(`↗S${fromIdx}`);
-      }
 
       edges.push({
         id: `${step.id}-${opt.id}`,
         source: step.id,
         target: targetId,
+        // Route back-edges (circular references) via bottom handles so they
+        // arc below the diagram instead of crossing through other nodes.
+        ...(isBackEdge ? { sourceHandle: 'bottom-source', targetHandle: 'bottom-target' } : {}),
         label: parts.join(' '),
         type: 'smoothstep',
         animated: false,
