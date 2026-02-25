@@ -14,6 +14,7 @@ export function EventTypeContent({ id }: Props) {
   const { data: eventType, isLoading, isError } = useEventType(id);
 
   const isOwner = user && eventType && user.id === eventType.user_id;
+  const canEdit = isOwner && !eventType?.used_in_other_users_collections;
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -44,7 +45,7 @@ export function EventTypeContent({ id }: Props) {
             <>
               <div className="flex items-start justify-between gap-4 mb-6">
                 <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{eventType.name}</h1>
-                {isOwner && (
+                {canEdit && (
                   <Link
                     href={`/event-types/${eventType.id}/edit`}
                     className="shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
