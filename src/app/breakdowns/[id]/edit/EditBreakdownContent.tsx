@@ -175,7 +175,7 @@ function CollectionRow({
         )}
       </div>
       <div className="flex items-center gap-2 ml-4 shrink-0">
-        <button onClick={onInfo} title="Collection details" className="rounded-md p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+        <button onClick={onInfo} title="Template details" className="rounded-md p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="7" cy="7" r="6" strokeWidth="1.3" className="stroke-current" />
             <path d="M7 6.5v4" strokeWidth="1.3" strokeLinecap="round" className="stroke-current" />
@@ -1035,9 +1035,9 @@ export function EditBreakdownContent({ id }: Props) {
                   />
                 </div>
 
-                {/* Collection */}
+                {/* Template */}
                 <div>
-                  <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Collection</label>
+                  <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Template</label>
                   {selectedCollection ? (
                     <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -1054,7 +1054,7 @@ export function EditBreakdownContent({ id }: Props) {
                       </button>
                     </div>
                   ) : collectionsLoading ? (
-                    <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading collections…</p>
+                    <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading templates…</p>
                   ) : (
                     <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
                       {collections.map((c) => (

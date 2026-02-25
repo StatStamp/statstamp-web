@@ -195,7 +195,7 @@ function CollectionRow({
       <div className="flex items-center gap-2 ml-4 shrink-0">
         <button
           onClick={onInfo}
-          title="Collection details"
+          title="Template details"
           className="rounded-md p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -951,7 +951,7 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
       return;
     }
     if (!collectionId) {
-      setError('Please select a collection.');
+      setError('Please select a template.');
       return;
     }
     if (!videoId) {
@@ -1172,8 +1172,8 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
               )}
             </Section>
 
-            {/* ── Collection ── */}
-            <Section title="Collection">
+            {/* ── Template ── */}
+            <Section title="Template">
               {selectedCollection ? (
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
@@ -1199,9 +1199,9 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                   </button>
                 </div>
               ) : collectionsLoading ? (
-                <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading collections…</p>
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading templates…</p>
               ) : collections.length === 0 ? (
-                <p className="text-sm text-zinc-400 dark:text-zinc-500">No collections available.</p>
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">No templates available.</p>
               ) : (
                 <div className="-mx-6 -mb-6 px-6">
                   {collections.map((c) => (

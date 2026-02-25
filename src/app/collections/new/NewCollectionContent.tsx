@@ -57,13 +57,13 @@ export function NewCollectionContent() {
 
           <div className="flex items-center gap-3 mb-6">
             <Link href="/collections" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-              Collections
+              Templates
             </Link>
             <span className="text-zinc-300 dark:text-zinc-600">/</span>
             <span className="text-sm text-zinc-900 dark:text-zinc-100">New</span>
           </div>
 
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">New Collection</h1>
+          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">New Template</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -109,7 +109,7 @@ export function NewCollectionContent() {
                 disabled={createCollection.isPending || !name.trim()}
                 className="inline-flex items-center rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {createCollection.isPending ? 'Creating…' : 'Create collection'}
+                {createCollection.isPending ? 'Creating…' : 'Create template'}
               </button>
             </div>
           </form>
