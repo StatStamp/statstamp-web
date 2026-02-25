@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -10,6 +10,7 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  useNodesState,
   type Node,
   type Edge,
   type NodeProps,
@@ -287,16 +288,21 @@ export function WorkflowDiagram({
   onStepClick,
   height = 260,
 }: WorkflowDiagramProps) {
-  const handleStepClick = useCallback(
-    (stepId: string) => onStepClick?.(stepId),
-    [onStepClick],
-  );
+  // Keep onStepClick in a ref so it never causes layout recomputation
+  const onStepClickRef = useRef(onStepClick);
+  useEffect(() => { onStepClickRef.current = onStepClick; });
+  const handleStepClick = useCallback((stepId: string) => onStepClickRef.current?.(stepId), []);
 
-  const { nodes, edges } = useMemo(() => {
+  const layouted = useMemo(() => {
     const built = buildNodesAndEdges(workflow, eventTypes, isEditing, handleStepClick);
     const laidOut = layoutGraph(built.nodes, built.edges);
     return { nodes: laidOut, edges: built.edges };
   }, [workflow, eventTypes, isEditing, handleStepClick]);
+
+  // useNodesState gives ReactFlow a mutable copy it can update during drags.
+  // Without onNodesChange, position changes from dragging are silently dropped.
+  const [nodes, setNodes, onNodesChange] = useNodesState(layouted.nodes);
+  useEffect(() => { setNodes(layouted.nodes); }, [layouted.nodes, setNodes]);
 
   if (workflow.steps.length === 0) {
     return (
@@ -313,7 +319,8 @@ export function WorkflowDiagram({
     <div style={{ height }} className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50 dark:bg-zinc-950">
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={layouted.edges}
+        onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         nodesDraggable={true}
