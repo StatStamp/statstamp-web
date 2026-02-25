@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 
 export interface Video {
@@ -60,5 +60,30 @@ export function useVideo(id: string) {
   return useQuery<Video>({
     queryKey: ['videos', id],
     queryFn: () => apiFetch<{ data: Video }>(`/videos/${id}`).then((r) => r.data),
+  });
+}
+
+export function useCreateVideo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { url: string; title?: string; description?: string }) =>
+      apiFetch<{ data: Video }>('/videos', { method: 'POST', body: data }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos', 'mine'] });
+      queryClient.invalidateQueries({ queryKey: ['videos', 'public'] });
+    },
+  });
+}
+
+export function useUpdateVideo(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title?: string; description?: string | null }) =>
+      apiFetch<{ data: Video }>(`/videos/${id}`, { method: 'PATCH', body: data }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos', id] });
+      queryClient.invalidateQueries({ queryKey: ['videos', 'mine'] });
+      queryClient.invalidateQueries({ queryKey: ['videos', 'public'] });
+    },
   });
 }
