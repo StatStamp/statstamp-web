@@ -134,7 +134,7 @@ export function BreakdownsContent() {
                           Name
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                          Collection
+                          Template
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                           Video

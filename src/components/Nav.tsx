@@ -69,7 +69,7 @@ function NavItems({ onAction }: { onAction?: () => void }) {
             </div>
             <NavLink href="/videos" onClick={onAction}>Videos</NavLink>
             <NavLink href="/breakdowns" onClick={onAction}>Breakdowns</NavLink>
-            <NavLink href="/collections" onClick={onAction}>Collections</NavLink>
+            <NavLink href="/collections" onClick={onAction}>Templates</NavLink>
             <NavLink href="/event-types" onClick={onAction}>Event Types</NavLink>
             <NavLink href="/teams" onClick={onAction}>Teams</NavLink>
             <NavLink href="/players" onClick={onAction}>Players</NavLink>

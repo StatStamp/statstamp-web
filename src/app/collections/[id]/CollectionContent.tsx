@@ -24,7 +24,7 @@ export function CollectionContent({ id }: Props) {
 
           <div className="flex items-center gap-3 mb-6">
             <Link href="/collections" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-              Collections
+              Templates
             </Link>
             <span className="text-zinc-300 dark:text-zinc-600">/</span>
             <span className="text-sm text-zinc-900 dark:text-zinc-100 truncate">
@@ -37,7 +37,7 @@ export function CollectionContent({ id }: Props) {
           )}
 
           {isError && (
-            <p className="text-sm text-red-600 dark:text-red-400">Could not load collection.</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Could not load template.</p>
           )}
 
           {collection && (

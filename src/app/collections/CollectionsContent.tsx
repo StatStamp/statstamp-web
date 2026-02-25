@@ -60,13 +60,13 @@ export function CollectionsContent() {
         <div className="max-w-4xl mx-auto px-6 py-8">
 
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">My Collections</h1>
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">My Templates</h1>
             <Link
               href="/collections/new"
               className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors"
             >
               <PlusIcon />
-              New collection
+              New template
             </Link>
           </div>
 
@@ -78,7 +78,7 @@ export function CollectionsContent() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search your collections…"
+              placeholder="Search your templates…"
               className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition"
             />
           </div>
@@ -96,14 +96,14 @@ export function CollectionsContent() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">No collections yet</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">Create your first collection to get started.</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">No templates yet</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">Create your first template to get started.</p>
                   <Link
                     href="/collections/new"
                     className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                   >
                     <PlusIcon />
-                    Create your first collection
+                    Create your first template
                   </Link>
                 </>
               )}

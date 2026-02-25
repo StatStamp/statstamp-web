@@ -92,7 +92,7 @@ export function EditCollectionContent({ id }: Props) {
 
           <div className="flex items-center gap-3 mb-6">
             <Link href="/collections" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-              Collections
+              Templates
             </Link>
             <span className="text-zinc-300 dark:text-zinc-600">/</span>
             <Link href={`/collections/${id}`} className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors truncate">
@@ -102,7 +102,7 @@ export function EditCollectionContent({ id }: Props) {
             <span className="text-sm text-zinc-900 dark:text-zinc-100">Edit</span>
           </div>
 
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Edit Collection</h1>
+          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Edit Template</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -152,14 +152,14 @@ export function EditCollectionContent({ id }: Props) {
           <div className="mt-10 rounded-xl border border-red-200 dark:border-red-900 p-4">
             <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Danger zone</h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-              Deleting a collection is permanent and cannot be undone.
+              Deleting a template is permanent and cannot be undone.
             </p>
             <button
               onClick={handleDelete}
               disabled={deleteCollection.isPending}
               className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
             >
-              {deleteCollection.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete collection'}
+              {deleteCollection.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete template'}
             </button>
           </div>
 
