@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 
 export interface Video {
@@ -21,6 +21,12 @@ export interface Video {
 
 interface PaginatedResponse<T> {
   data: T[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 export function usePublicVideos() {
@@ -33,9 +39,51 @@ export function usePublicVideos() {
   });
 }
 
+export function useMyVideos(search: string, enabled = true) {
+  return useInfiniteQuery<PaginatedResponse<Video>>({
+    queryKey: ['videos', 'mine', search],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ mine: '1', page: String(pageParam) });
+      if (search) params.set('search', search);
+      return apiFetch<PaginatedResponse<Video>>(`/videos?${params}`);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.current_page < lastPage.meta.last_page
+        ? lastPage.meta.current_page + 1
+        : undefined,
+    enabled,
+  });
+}
+
 export function useVideo(id: string) {
   return useQuery<Video>({
     queryKey: ['videos', id],
     queryFn: () => apiFetch<{ data: Video }>(`/videos/${id}`).then((r) => r.data),
+  });
+}
+
+export function useCreateVideo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { url: string; title?: string; description?: string }) =>
+      apiFetch<{ data: Video }>('/videos', { method: 'POST', body: data }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos', 'mine'] });
+      queryClient.invalidateQueries({ queryKey: ['videos', 'public'] });
+    },
+  });
+}
+
+export function useUpdateVideo(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title?: string; description?: string | null }) =>
+      apiFetch<{ data: Video }>(`/videos/${id}`, { method: 'PATCH', body: data }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videos', id] });
+      queryClient.invalidateQueries({ queryKey: ['videos', 'mine'] });
+      queryClient.invalidateQueries({ queryKey: ['videos', 'public'] });
+    },
   });
 }
