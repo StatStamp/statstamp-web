@@ -900,6 +900,7 @@ export function EditBreakdownContent({ id }: Props) {
   async function handleTeamSelect(team: Team) {
     if (!teamModalSide) return;
     const existingRecord = teamModalSide === 'away' ? awayTeamRecord : homeTeamRecord;
+    const teamColor = team.color ?? '#ffffff';
 
     let breakdownTeamId: string;
     if (existingRecord) {
@@ -908,12 +909,14 @@ export function EditBreakdownContent({ id }: Props) {
       for (const p of slotPlayers) {
         await deletePlayer.mutateAsync({ breakdownId: id, playerId: p.id });
       }
-      await updateTeam.mutateAsync({ breakdownId: id, teamId: existingRecord.id, team_id: team.id });
+      await updateTeam.mutateAsync({ breakdownId: id, teamId: existingRecord.id, team_id: team.id, color: teamColor });
       breakdownTeamId = existingRecord.id;
     } else {
-      const newBT = await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: teamModalSide });
+      const newBT = await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: teamModalSide, color: teamColor });
       breakdownTeamId = newBT.id;
     }
+    if (teamModalSide === 'away') setAwayColor(teamColor);
+    else setHomeColor(teamColor);
     setTeamModalSide(null);
 
     // Auto-populate default players for the selected team

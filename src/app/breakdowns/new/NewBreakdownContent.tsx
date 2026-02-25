@@ -1352,8 +1352,13 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
           side={teamModalSide}
           videoTitle={video?.title ?? ''}
           onSelect={(team) => {
-            if (teamModalSide === 'away') setAwayTeam(team);
-            else setHomeTeam(team);
+            if (teamModalSide === 'away') {
+              setAwayTeam(team);
+              setAwayColor(team.color ?? '#ffffff');
+            } else {
+              setHomeTeam(team);
+              setHomeColor(team.color ?? '#ffffff');
+            }
             setTeamModalSide(null);
           }}
           onClose={() => setTeamModalSide(null)}
