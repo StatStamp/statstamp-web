@@ -646,17 +646,16 @@ function ColorPicker({ label, value, onChange }: { label: string; value: string;
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
-      <label className="flex items-center gap-1.5 cursor-pointer">
+      <label className="relative w-6 h-6 shrink-0 cursor-pointer">
         <span
-          className="w-6 h-6 rounded border border-zinc-200 dark:border-zinc-700 shrink-0"
+          className="absolute inset-0 rounded border border-zinc-200 dark:border-zinc-700"
           style={{ backgroundColor: value }}
         />
-        <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{value}</span>
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="sr-only"
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
       </label>
     </div>
