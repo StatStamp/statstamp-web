@@ -123,6 +123,10 @@ function OptionEdge({
     sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
   });
   const yOffset = (data?.labelYOffset as number) ?? 0;
+  // Place label at ~25% along the edge by interpolating halfway between
+  // the source point and the path midpoint (getSmoothStepPath gives t=0.5).
+  const posX = sourceX + (labelX - sourceX) * 0.5;
+  const posY = sourceY + (labelY - sourceY) * 0.5;
 
   return (
     <>
@@ -133,7 +137,7 @@ function OptionEdge({
             className="nodrag nopan"
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + yOffset}px)`,
+              transform: `translate(-50%, -50%) translate(${posX}px, ${posY + yOffset}px)`,
               fontSize: 11,
               color: '#71717a',
               background: 'rgba(244,244,245,0.85)',
