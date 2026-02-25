@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, ApiError } from '@/lib/api';
 
 export interface Collection {
   id: string;
@@ -62,6 +62,63 @@ export function useCollections() {
       return res.data.slice().sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       );
+    },
+  });
+}
+
+export function useMyCollections(search: string, enabled = true) {
+  return useQuery<Collection[]>({
+    queryKey: ['collections', 'mine', search],
+    queryFn: async () => {
+      const params = new URLSearchParams({ mine: '1' });
+      if (search) params.set('search', search);
+      const res = await apiFetch<PaginatedResponse<Collection>>(`/collections?${params}`);
+      return res.data;
+    },
+    enabled,
+  });
+}
+
+export function useCollection(id: string | null) {
+  return useQuery<Collection>({
+    queryKey: ['collections', id],
+    queryFn: async () => {
+      const res = await apiFetch<{ data: Collection }>(`/collections/${id}`);
+      return res.data;
+    },
+    enabled: id !== null,
+  });
+}
+
+export function useCreateCollection() {
+  const queryClient = useQueryClient();
+  return useMutation<Collection, ApiError, { name: string; description?: string | null; is_public?: boolean }>({
+    mutationFn: (data) =>
+      apiFetch<{ data: Collection }>('/collections', { method: 'POST', body: data }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+  });
+}
+
+export function useUpdateCollection(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation<Collection, ApiError, { name?: string; description?: string | null; is_public?: boolean }>({
+    mutationFn: (data) =>
+      apiFetch<{ data: Collection }>(`/collections/${id}`, { method: 'PATCH', body: data }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+  });
+}
+
+export function useDeleteCollection() {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (id) =>
+      apiFetch(`/collections/${id}`, { method: 'DELETE' }).then(() => undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
     },
   });
 }
