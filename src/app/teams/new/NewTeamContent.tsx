@@ -17,7 +17,6 @@ export function NewTeamContent() {
   const [leagueName, setLeagueName] = useState('');
   const [abbreviation, setAbbreviation] = useState('');
   const [color, setColor] = useState('#ffffff');
-  const [isPublic, setIsPublic] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -44,7 +43,6 @@ export function NewTeamContent() {
         league_name: leagueName.trim() || null,
         abbreviation: abbreviation.trim() || null,
         color: color || null,
-        is_public: isPublic,
       },
       {
         onSuccess: (team) => {
@@ -129,20 +127,6 @@ export function NewTeamContent() {
                 />
                 <span className="text-sm font-mono text-zinc-600 dark:text-zinc-400">{color}</span>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Public</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Allow others to use this team in their breakdowns</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPublic(!isPublic)}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors focus:outline-none ${isPublic ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-700'}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white dark:bg-zinc-900 shadow transition-transform mt-0.5 ${isPublic ? 'translate-x-4' : 'translate-x-0.5'}`} />
-              </button>
             </div>
 
             {error && (
