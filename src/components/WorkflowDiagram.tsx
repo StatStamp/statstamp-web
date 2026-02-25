@@ -27,7 +27,7 @@ const DONE_NODE_HEIGHT = 32;
 function layoutGraph(nodes: Node[], edges: Edge[]): Node[] {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'LR', nodesep: 80, ranksep: 160 });
+  g.setGraph({ rankdir: 'LR', nodesep: 140, ranksep: 160 });
 
   nodes.forEach((n) => {
     g.setNode(n.id, { width: n.width ?? NODE_WIDTH, height: n.height ?? STEP_NODE_BASE_HEIGHT });
