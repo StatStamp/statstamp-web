@@ -1,5 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
+
+interface PaginatedMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+interface PaginatedResponseWithMeta<T> {
+  data: T[];
+  meta: PaginatedMeta;
+}
 
 export interface Breakdown {
   id: string;
@@ -123,6 +135,40 @@ export function useCollectionBreakdowns(collectionId: string | null) {
       return res.data.slice(0, 5);
     },
     enabled: collectionId !== null,
+  });
+}
+
+export function useAllBreakdowns(search: string, enabled = true) {
+  return useInfiniteQuery<PaginatedResponseWithMeta<Breakdown>>({
+    queryKey: ['breakdowns', 'all', search],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ page: String(pageParam) });
+      if (search) params.set('search', search);
+      return apiFetch<PaginatedResponseWithMeta<Breakdown>>(`/breakdowns?${params}`);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.current_page < lastPage.meta.last_page
+        ? lastPage.meta.current_page + 1
+        : undefined,
+    enabled,
+  });
+}
+
+export function useMyBreakdowns(search: string, enabled = true) {
+  return useInfiniteQuery<PaginatedResponseWithMeta<Breakdown>>({
+    queryKey: ['breakdowns', 'mine', search],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ mine: '1', page: String(pageParam) });
+      if (search) params.set('search', search);
+      return apiFetch<PaginatedResponseWithMeta<Breakdown>>(`/breakdowns?${params}`);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.current_page < lastPage.meta.last_page
+        ? lastPage.meta.current_page + 1
+        : undefined,
+    enabled,
   });
 }
 
