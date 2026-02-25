@@ -1,9 +1,9 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useRef } from 'react';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
-import { YouTubePlayer } from '@/components/YouTubePlayer';
+import { StatTakerYouTubePlayer } from '@/components/StatTakerYouTubePlayer';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   useBreakdown,
@@ -14,6 +14,7 @@ import {
   type EventCountEntry,
   type StatEntry,
 } from '@/hooks/breakdowns';
+import { BreakdownEventLog } from './BreakdownEventLog';
 
 interface Props {
   id: string;
@@ -367,6 +368,7 @@ function StatsTable({ id, isOwner }: { id: string; isOwner: boolean }) {
 export function BreakdownContent({ id }: Props) {
   const { user } = useAuth();
   const { data: breakdown, isLoading, isError } = useBreakdown(id);
+  const seekRef = useRef<((seconds: number) => void) | null>(null);
 
   const isOwner = !!user && !!breakdown && user.id === breakdown.user_id;
 
@@ -383,7 +385,13 @@ export function BreakdownContent({ id }: Props) {
 
           {breakdown && (
             <>
-              <YouTubePlayer videoId={breakdown.video_source_identifier ?? ''} />
+              <div className="aspect-video w-full rounded-xl overflow-hidden">
+                <StatTakerYouTubePlayer
+                  videoId={breakdown.video_source_identifier ?? ''}
+                  onTick={() => {}}
+                  seekRef={seekRef}
+                />
+              </div>
 
               {/* Stats — desktop only here; mobile copy lives after the right panel */}
               <div className="hidden lg:block">
@@ -449,22 +457,12 @@ export function BreakdownContent({ id }: Props) {
 
                 <div className="border-t border-zinc-100 dark:border-zinc-800" />
 
-                {/* Events placeholder */}
+                {/* Events log */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
                     Events
                   </p>
-                  <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-8 text-center">
-                    <p className="text-sm text-zinc-400 dark:text-zinc-500">No events tagged yet.</p>
-                    {isOwner && (
-                      <Link
-                        href={`/breakdowns/${id}/stat-taker`}
-                        className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Open Stat Taker →
-                      </Link>
-                    )}
-                  </div>
+                  <BreakdownEventLog breakdownId={id} seekRef={seekRef} />
                 </div>
               </>
             ) : isLoading ? (
