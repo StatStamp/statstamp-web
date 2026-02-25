@@ -6,7 +6,11 @@ import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { VideoCard } from '@/components/VideoCard';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMyVideos } from '@/hooks/videos';
+import { useAllVideos, useMyVideos } from '@/hooks/videos';
+
+interface Props {
+  defaultMine: boolean;
+}
 
 function SearchIcon() {
   return (
@@ -32,9 +36,10 @@ function PlusIcon() {
   );
 }
 
-export function MyVideosContent() {
+export function VideosContent({ defaultMine }: Props) {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const [filter, setFilter] = useState<'all' | 'mine'>(defaultMine ? 'mine' : 'all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -44,19 +49,30 @@ export function MyVideosContent() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Auth redirect when mine filter is active but user is not authenticated
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && filter === 'mine') {
       router.replace('/login');
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, filter, router]);
 
-  const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-  } = useMyVideos(debouncedSearch, !!user);
+  function handleFilterChange(newFilter: 'all' | 'mine') {
+    if (newFilter === 'mine' && !authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+    setFilter(newFilter);
+    const params = new URLSearchParams();
+    if (newFilter === 'mine') params.set('mine', '1');
+    router.replace(`/videos${params.toString() ? `?${params}` : ''}`);
+  }
+
+  const allQuery = useAllVideos(debouncedSearch, filter === 'all');
+  const mineQuery = useMyVideos(debouncedSearch, filter === 'mine' && !authLoading && !!user);
+
+  const activeQuery = filter === 'all' ? allQuery : mineQuery;
+
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = activeQuery;
 
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -77,7 +93,8 @@ export function MyVideosContent() {
 
   const videos = data?.pages.flatMap((p) => p.data) ?? [];
 
-  if (authLoading || !user) {
+  // Show loading screen while auth is resolving for mine filter
+  if (filter === 'mine' && (authLoading || !user)) {
     return (
       <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
         <Nav />
@@ -96,27 +113,54 @@ export function MyVideosContent() {
         <div className="max-w-5xl mx-auto px-6 py-8">
 
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">My Videos</h1>
-            <Link
-              href="/videos/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors"
-            >
-              <PlusIcon />
-              Add video
-            </Link>
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Videos</h1>
+            {user && (
+              <Link
+                href="/videos/new"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors"
+              >
+                <PlusIcon />
+                Add video
+              </Link>
+            )}
           </div>
 
-          <div className="relative mb-6">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              <SearchIcon />
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search your videos…"
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition"
-            />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden shrink-0">
+              <button
+                onClick={() => handleFilterChange('all')}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                  filter === 'all'
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => handleFilterChange('mine')}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors border-l border-zinc-200 dark:border-zinc-800 ${
+                  filter === 'mine'
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                }`}
+              >
+                Mine
+              </button>
+            </div>
+
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <SearchIcon />
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={filter === 'mine' ? 'Search your videos…' : 'Search all videos…'}
+                className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent transition"
+              />
+            </div>
           </div>
 
           {isLoading ? (
@@ -132,7 +176,7 @@ export function MyVideosContent() {
                     Try a different search term.
                   </p>
                 </>
-              ) : (
+              ) : filter === 'mine' ? (
                 <>
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">
                     No videos yet
@@ -148,6 +192,8 @@ export function MyVideosContent() {
                     Add your first video
                   </Link>
                 </>
+              ) : (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">No videos yet.</p>
               )}
             </div>
           ) : (
