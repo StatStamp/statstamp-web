@@ -7,9 +7,13 @@ import {
   Controls,
   Handle,
   Position,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
   type Node,
   type Edge,
   type NodeProps,
+  type EdgeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
@@ -107,6 +111,47 @@ function DoneNode(_: NodeProps<Node<DoneNodeData>>) {
 
 const nodeTypes = { step: StepNode, done: DoneNode };
 
+// ── Custom edge component ─────────────────────────────────────────────────────
+
+function OptionEdge({
+  id, sourceX, sourceY, targetX, targetY,
+  sourcePosition, targetPosition,
+  label, style, markerEnd, data,
+}: EdgeProps) {
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
+  });
+  const yOffset = (data?.labelYOffset as number) ?? 0;
+
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            className="nodrag nopan"
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY + yOffset}px)`,
+              fontSize: 11,
+              color: '#71717a',
+              background: 'rgba(244,244,245,0.85)',
+              padding: '2px 6px',
+              borderRadius: 3,
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label as string}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+const edgeTypes = { option: OptionEdge };
+
 // ── Cycle detection + graph build ────────────────────────────────────────────
 
 function buildNodesAndEdges(
@@ -165,9 +210,11 @@ function buildNodesAndEdges(
       } satisfies StepNodeData,
     });
 
-    // Option edges
+    // Option edges — stagger labels vertically so they don't overlap when
+    // multiple options leave the same step.
+    const numOptions = step.options.length;
     const visitedInBFS = new Set<string>(orderedSteps.map((s) => s.id).slice(0, stepIndex.get(step.id)));
-    for (const opt of step.options) {
+    step.options.forEach((opt, optIdx) => {
       const targetId = opt.next_step_id ?? doneNodeId;
       const isBackEdge = opt.next_step_id !== null && visitedInBFS.has(opt.next_step_id) && opt.next_step_id !== step.id
         ? false // forward-to-earlier-step: still a back-edge visually but not by BFS order alone
@@ -183,6 +230,12 @@ function buildNodesAndEdges(
       }
       if (opt.collect_participant) parts.push('👤');
 
+      // Vertical offset spreads labels so they don't pile up at the same midpoint.
+      // e.g. 3 options → offsets: −20, 0, +20
+      const labelYOffset = numOptions > 1
+        ? (optIdx - (numOptions - 1) / 2) * 20
+        : 0;
+
       edges.push({
         id: `${step.id}-${opt.id}`,
         source: step.id,
@@ -191,18 +244,15 @@ function buildNodesAndEdges(
         // arc below the diagram instead of crossing through other nodes.
         ...(isBackEdge ? { sourceHandle: 'bottom-source', targetHandle: 'bottom-target' } : {}),
         label: parts.join(' '),
-        type: 'smoothstep',
+        type: 'option',
         animated: false,
-        data: { isBackEdge },
+        data: { isBackEdge, labelYOffset },
         style: isBackEdge
           ? { stroke: '#f59e0b', strokeDasharray: '5,3' }
           : { stroke: '#a1a1aa' },
-        labelStyle: { fontSize: 11, fill: '#71717a' },
-        labelBgStyle: { fill: '#f4f4f5', fillOpacity: 0.85 },
-        labelBgPadding: [4, 3] as [number, number],
         markerEnd: { type: 'arrowclosed' as const, color: isBackEdge ? '#f59e0b' : '#a1a1aa' },
       });
-    }
+    });
   }
 
   if (hasDoneNode) {
@@ -265,7 +315,8 @@ export function WorkflowDiagram({
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        nodesDraggable={false}
+        edgeTypes={edgeTypes}
+        nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={isEditing}
         zoomOnScroll={false}
