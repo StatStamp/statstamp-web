@@ -880,6 +880,7 @@ export function EditBreakdownContent({ id }: Props) {
       name: bt.team_name ?? bt.team_id,
       league_name: bt.team_league_name ?? null,
       abbreviation: bt.team_abbreviation ?? null,
+      color: null,
       is_public: true,
       created_at: '',
       updated_at: '',
