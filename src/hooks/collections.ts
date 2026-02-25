@@ -47,8 +47,10 @@ export interface CollectionWorkflow {
 
 export interface CollectionEventType {
   id: string;
+  user_id: string | null;
   name: string;
-  abbreviation: string;
+  abbreviation: string | null;
+  is_public: boolean;
 }
 
 interface PaginatedResponse<T> {
@@ -288,5 +290,35 @@ export function useDuplicateCollection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] });
     },
+  });
+}
+
+// ── Collection event type mutations ───────────────────────────────────────────
+
+function invalidateCollectionEventTypes(queryClient: ReturnType<typeof useQueryClient>, collectionId: string) {
+  queryClient.invalidateQueries({ queryKey: ['collections', collectionId, 'event-types'] });
+}
+
+export function useAddCollectionEventType(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<CollectionEventType[], ApiError, string>({
+    mutationFn: (eventTypeId) =>
+      apiFetch<{ data: CollectionEventType[] }>(
+        `/collections/${collectionId}/event-types/${eventTypeId}`,
+        { method: 'POST' },
+      ).then((r) => r.data),
+    onSuccess: () => invalidateCollectionEventTypes(queryClient, collectionId),
+  });
+}
+
+export function useRemoveCollectionEventType(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (eventTypeId) =>
+      apiFetch(
+        `/collections/${collectionId}/event-types/${eventTypeId}`,
+        { method: 'DELETE' },
+      ).then(() => undefined),
+    onSuccess: () => invalidateCollectionEventTypes(queryClient, collectionId),
   });
 }

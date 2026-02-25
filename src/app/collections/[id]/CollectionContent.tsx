@@ -15,8 +15,12 @@ import {
   useDeleteWorkflow,
   useCreateWorkflowStep,
   useDuplicateCollection,
+  useAddCollectionEventType,
+  useRemoveCollectionEventType,
   type CollectionWorkflow,
+  type CollectionEventType,
 } from '@/hooks/collections';
+import { useCreateEventType, useSearchPublicEventTypes, type EventType } from '@/hooks/eventTypes';
 
 // Load ReactFlow diagram only client-side (it needs DOM measurements)
 const WorkflowDiagram = dynamic(
@@ -28,12 +32,22 @@ interface Props {
   id: string;
 }
 
+type Tab = 'event-types' | 'workflows' | 'stat-calculations';
+
 // ── Small icon helpers ────────────────────────────────────────────────────────
 
 function PlusIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
       <path d="M6.5 1.5v10M1.5 6.5h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+    </svg>
+  );
+}
+
+function MinusIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M2 6.5h9" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
     </svg>
   );
 }
@@ -63,6 +77,308 @@ function CopyIcon() {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-zinc-400 dark:text-zinc-500">
+      <circle cx="7" cy="7" r="4.5" strokeWidth="1.5" className="stroke-current" />
+      <path d="M10.5 10.5L14 14" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+    </svg>
+  );
+}
+
+// ── Add Event Type Modal ───────────────────────────────────────────────────────
+
+interface AddEventTypeModalProps {
+  collectionId: string;
+  onClose: () => void;
+}
+
+function AddEventTypeModal({ collectionId, onClose }: AddEventTypeModalProps) {
+  const [mode, setMode] = useState<'search' | 'create'>('search');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selected, setSelected] = useState<EventType | null>(null);
+  const [newAbbreviation, setNewAbbreviation] = useState('');
+  const [newName, setNewName] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+  const abbreviationRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    searchRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (mode === 'create') abbreviationRef.current?.focus();
+  }, [mode]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: results, isFetching } = useSearchPublicEventTypes(debouncedSearch, mode === 'search');
+  const addExisting = useAddCollectionEventType(collectionId);
+  const createEventType = useCreateEventType();
+  const addNew = useAddCollectionEventType(collectionId);
+
+  const isPending = addExisting.isPending || createEventType.isPending || addNew.isPending;
+
+  function handleSelectExisting(et: EventType) {
+    setSelected(et);
+  }
+
+  function handleSelectCreate() {
+    setMode('create');
+    setSelected(null);
+  }
+
+  function handleSubmitExisting() {
+    if (!selected) return;
+    addExisting.mutate(selected.id, { onSuccess: onClose });
+  }
+
+  const error = addExisting.error || createEventType.error || addNew.error;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-sm mx-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 pt-5 pb-4">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+            {mode === 'search' ? 'Add event type' : 'Create new event type'}
+          </h2>
+
+          {mode === 'search' && (
+            <>
+              {/* Search input */}
+              <div className="relative mb-3">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <SearchIcon />
+                </span>
+                <input
+                  ref={searchRef}
+                  type="text"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
+                  placeholder="Search by name or abbreviation…"
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition"
+                />
+              </div>
+
+              {/* Results list */}
+              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-sm">
+                {isFetching && !results && (
+                  <div className="px-3 py-2 text-zinc-400 dark:text-zinc-500">Searching…</div>
+                )}
+
+                {results && results.length === 0 && debouncedSearch && (
+                  <div className="px-3 py-2 text-zinc-400 dark:text-zinc-500">No results</div>
+                )}
+
+                {results && results.map((et) => (
+                  <button
+                    key={et.id}
+                    type="button"
+                    onClick={() => handleSelectExisting(et)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left border-b border-zinc-100 dark:border-zinc-800 last:border-b-0 transition-colors ${
+                      selected?.id === et.id
+                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                        : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                    }`}
+                  >
+                    {et.abbreviation && (
+                      <span className={`font-mono text-xs w-12 shrink-0 ${selected?.id === et.id ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400 dark:text-zinc-500'}`}>
+                        {et.abbreviation}
+                      </span>
+                    )}
+                    <span className="truncate">{et.name}</span>
+                  </button>
+                ))}
+
+                {/* Create new option */}
+                <button
+                  type="button"
+                  onClick={handleSelectCreate}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left border-t border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                >
+                  <PlusIcon />
+                  Create new event type
+                </button>
+              </div>
+            </>
+          )}
+
+          {mode === 'create' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Event Type Abbreviation <span className="text-zinc-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  ref={abbreviationRef}
+                  type="text"
+                  value={newAbbreviation}
+                  onChange={(e) => setNewAbbreviation(e.target.value)}
+                  maxLength={10}
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Event Type Name
+                </label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition"
+                />
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+              {(error as { message?: string }).message ?? 'Something went wrong. Please try again.'}
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-zinc-100 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+          >
+            Cancel
+          </button>
+          {mode === 'search' && selected && (
+            <button
+              type="button"
+              onClick={handleSubmitExisting}
+              disabled={isPending}
+              className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors"
+            >
+              {isPending ? 'Adding…' : 'Add'}
+            </button>
+          )}
+          {mode === 'create' && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!newName.trim()) return;
+                createEventType.mutate(
+                  { name: newName.trim(), abbreviation: newAbbreviation.trim() || null, is_public: true },
+                  { onSuccess: (created) => addNew.mutate(created.id, { onSuccess: onClose }) },
+                );
+              }}
+              disabled={isPending || !newName.trim()}
+              className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors"
+            >
+              {isPending ? 'Creating…' : 'Create & add'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Event Types tab ───────────────────────────────────────────────────────────
+
+interface EventTypesTabProps {
+  collectionId: string;
+  isOwner: boolean;
+  eventTypes: CollectionEventType[] | undefined;
+  isLoading: boolean;
+}
+
+function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading }: EventTypesTabProps) {
+  const [addOpen, setAddOpen] = useState(false);
+  const removeEventType = useRemoveCollectionEventType(collectionId);
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Event Types</h2>
+        {isOwner && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+          >
+            <PlusIcon />
+            Add event type
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
+      ) : !eventTypes || eventTypes.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 py-12 text-center">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">No event types yet</p>
+          {isOwner && (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Add event types to define what can be tracked.</p>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Abbr</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Visibility</th>
+                {isOwner && <th className="px-4 py-3 w-10" />}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
+              {eventTypes.map((et) => (
+                <tr key={et.id} className="transition-colors">
+                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{et.name}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-mono">
+                    {et.abbreviation ?? <span className="text-zinc-400 dark:text-zinc-600 font-sans">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${et.is_public ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}>
+                      {et.is_public ? 'Public' : 'Private'}
+                    </span>
+                  </td>
+                  {isOwner && (
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        onClick={() => removeEventType.mutate(et.id)}
+                        disabled={removeEventType.isPending}
+                        title="Remove from template"
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition-colors"
+                      >
+                        <MinusIcon />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {addOpen && (
+        <AddEventTypeModal
+          key="add-et-modal"
+          collectionId={collectionId}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 // ── Individual workflow card ──────────────────────────────────────────────────
 
 interface WorkflowCardProps {
@@ -70,7 +386,7 @@ interface WorkflowCardProps {
   collectionId: string;
   isOwner: boolean;
   inUse: boolean;
-  eventTypes: ReturnType<typeof useCollectionEventTypes>['data'];
+  eventTypes: CollectionEventType[] | undefined;
 }
 
 function WorkflowCard({ workflow, collectionId, isOwner, inUse, eventTypes }: WorkflowCardProps) {
@@ -298,9 +614,10 @@ export function CollectionContent({ id }: Props) {
   const { user } = useAuth();
   const { data: collection, isLoading, isError } = useCollection(id);
   const { data: workflows, isLoading: workflowsLoading } = useCollectionWorkflows(id);
-  const { data: eventTypes } = useCollectionEventTypes(id);
+  const { data: eventTypes, isLoading: eventTypesLoading } = useCollectionEventTypes(id);
   const createWorkflow = useCreateWorkflow(id);
   const [dupOpen, setDupOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('event-types');
 
   const isOwner = user && collection && user.id === collection.user_id;
   const inUse = (collection?.breakdowns_count ?? 0) > 0;
@@ -312,6 +629,12 @@ export function CollectionContent({ id }: Props) {
   const sorted = workflows
     ? [...workflows].sort((a, b) => a.display_order - b.display_order)
     : [];
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'event-types', label: 'Event Types' },
+    { key: 'workflows', label: 'Workflows' },
+    { key: 'stat-calculations', label: 'Stat Calculations' },
+  ];
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -383,53 +706,88 @@ export function CollectionContent({ id }: Props) {
                 </div>
               </dl>
 
-              {/* Workflows section */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Workflows</h2>
-                  {isOwner && !inUse && (
-                    <button
-                      onClick={handleAddWorkflow}
-                      disabled={createWorkflow.isPending}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 disabled:opacity-50 transition-colors"
-                    >
-                      <PlusIcon />
-                      Add workflow
-                    </button>
-                  )}
-                </div>
+              {/* Tab navigation */}
+              <div className="flex gap-1 mb-6 border-b border-zinc-200 dark:border-zinc-800">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                      activeTab === tab.key
+                        ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
+                        : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                {/* In-use notice for owners */}
-                {isOwner && inUse && (
-                  <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-4 text-sm text-amber-800 dark:text-amber-300">
-                    This template is used in {collection.breakdowns_count} {collection.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Workflows cannot be edited while the template is in use. Duplicate the template to make changes.
-                  </div>
-                )}
+              {/* Tab content */}
+              {activeTab === 'event-types' && (
+                <EventTypesTab
+                  collectionId={id}
+                  isOwner={!!isOwner}
+                  eventTypes={eventTypes}
+                  isLoading={eventTypesLoading}
+                />
+              )}
 
-                {workflowsLoading ? (
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading workflows…</p>
-                ) : sorted.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 py-12 text-center">
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">No workflows yet</p>
-                    {isOwner && (
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400">Add a workflow to define how events are captured.</p>
+              {activeTab === 'workflows' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Workflows</h2>
+                    {isOwner && !inUse && (
+                      <button
+                        onClick={handleAddWorkflow}
+                        disabled={createWorkflow.isPending}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 disabled:opacity-50 transition-colors"
+                      >
+                        <PlusIcon />
+                        Add workflow
+                      </button>
                     )}
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {sorted.map((workflow) => (
-                      <WorkflowCard
-                        key={workflow.id}
-                        workflow={workflow}
-                        collectionId={id}
-                        isOwner={!!isOwner}
-                        inUse={inUse}
-                        eventTypes={eventTypes}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+
+                  {/* In-use notice for owners */}
+                  {isOwner && inUse && (
+                    <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-4 text-sm text-amber-800 dark:text-amber-300">
+                      This template is used in {collection.breakdowns_count} {collection.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Workflows cannot be edited while the template is in use. Duplicate the template to make changes.
+                    </div>
+                  )}
+
+                  {workflowsLoading ? (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading workflows…</p>
+                  ) : sorted.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 py-12 text-center">
+                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">No workflows yet</p>
+                      {isOwner && (
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Add a workflow to define how events are captured.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {sorted.map((workflow) => (
+                        <WorkflowCard
+                          key={workflow.id}
+                          workflow={workflow}
+                          collectionId={id}
+                          isOwner={!!isOwner}
+                          inUse={inUse}
+                          eventTypes={eventTypes}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'stat-calculations' && (
+                <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 py-12 text-center">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">Stat Calculations</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Coming soon.</p>
+                </div>
+              )}
             </>
           )}
         </div>

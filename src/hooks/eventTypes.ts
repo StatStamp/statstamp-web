@@ -9,6 +9,8 @@ export interface EventType {
   is_public: boolean;
   created_at: string;
   updated_at: string;
+  // Present only when fetched as owner (?mine=1 or GET /event-types/:id as owner)
+  used_in_other_users_collections?: boolean;
 }
 
 interface PaginatedResponse<T> {
@@ -69,5 +71,20 @@ export function useDeleteEventType() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-types'] });
     },
+  });
+}
+
+// Searches all public event types, ordered by most-used in collections first.
+// Intended for the "add event type to template" modal.
+export function useSearchPublicEventTypes(search: string, enabled = true) {
+  return useQuery<EventType[]>({
+    queryKey: ['event-types', 'public-search', search],
+    queryFn: async () => {
+      const params = new URLSearchParams({ by_usage: '1', limit: '5' });
+      if (search) params.set('search', search);
+      const res = await apiFetch<PaginatedResponse<EventType>>(`/event-types?${params}`);
+      return res.data;
+    },
+    enabled,
   });
 }

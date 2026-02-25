@@ -119,27 +119,41 @@ export function EventTypesContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
-                  {eventTypes.map((et) => (
-                    <tr
-                      key={et.id}
-                      onClick={() => router.push(`/event-types/${et.id}`)}
-                      className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                    >
-                      <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
-                        <Link href={`/event-types/${et.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
-                          {et.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-mono">
-                        {et.abbreviation ?? <span className="text-zinc-400 dark:text-zinc-600 font-sans">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${et.is_public ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}>
-                          {et.is_public ? 'Public' : 'Private'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {eventTypes.map((et) => {
+                    const locked = et.used_in_other_users_collections === true;
+                    return (
+                      <tr
+                        key={et.id}
+                        onClick={() => !locked && router.push(`/event-types/${et.id}`)}
+                        className={locked ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors'}
+                      >
+                        <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
+                          <div className="flex items-center gap-2">
+                            {locked ? (
+                              <span>{et.name}</span>
+                            ) : (
+                              <Link href={`/event-types/${et.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                                {et.name}
+                              </Link>
+                            )}
+                            {locked && (
+                              <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-400" title="Used in another user's template — cannot be edited">
+                                Shared
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-mono">
+                          {et.abbreviation ?? <span className="text-zinc-400 dark:text-zinc-600 font-sans">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${et.is_public ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}>
+                            {et.is_public ? 'Public' : 'Private'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
