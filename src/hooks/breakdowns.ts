@@ -25,6 +25,7 @@ export interface BreakdownTeam {
   team_abbreviation?: string | null;
   team_league_name?: string | null;
   home_away: 'home' | 'away' | null;
+  color: string;
   created_at: string;
   updated_at: string;
 }
@@ -152,7 +153,7 @@ export function useCreateBreakdownPeriod() {
 
 export function useCreateBreakdownTeam() {
   const queryClient = useQueryClient();
-  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away' }>({
+  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away'; color?: string }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams`, {
         method: 'POST',
@@ -254,7 +255,7 @@ export function useDeleteBreakdownPeriod() {
 
 export function useUpdateBreakdownTeam() {
   const queryClient = useQueryClient();
-  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; teamId: string; team_id?: string; home_away?: 'home' | 'away' | null }>({
+  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; teamId: string; team_id?: string; home_away?: 'home' | 'away' | null; color?: string }>({
     mutationFn: ({ breakdownId, teamId, ...data }) =>
       apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams/${teamId}`, {
         method: 'PATCH',

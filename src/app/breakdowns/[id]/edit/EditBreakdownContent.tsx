@@ -539,6 +539,27 @@ function MatchupDivider({ onSwap, swapping }: { onSwap?: () => void; swapping?: 
   );
 }
 
+function ColorPicker({ label, value, onChange, onBlur }: { label: string; value: string; onChange: (v: string) => void; onBlur: () => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-zinc-500 dark:text-zinc-400">{label}</span>
+      <label className="relative w-6 h-6 shrink-0 cursor-pointer">
+        <span
+          className="absolute inset-0 rounded border border-zinc-200 dark:border-zinc-700"
+          style={{ backgroundColor: value }}
+        />
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+      </label>
+    </div>
+  );
+}
+
 function TeamSelectModal({
   side,
   videoTitle,
@@ -759,6 +780,10 @@ export function EditBreakdownContent({ id }: Props) {
   // Track a "pending mode" that the user wants to switch to (confirmed via modal)
   const [pendingMode, setPendingMode] = useState<'matchup' | 'players' | null>(null);
 
+  // Local color state for each team slot (synced from loaded records)
+  const [awayColor, setAwayColor] = useState('#000000');
+  const [homeColor, setHomeColor] = useState('#ffffff');
+
   // Modal state
   const [infoModalId, setInfoModalId] = useState<string | null>(null);
   const [teamModalSide, setTeamModalSide] = useState<'away' | 'home' | null>(null);
@@ -863,9 +888,19 @@ export function EditBreakdownContent({ id }: Props) {
   const awayTeam = resolveTeam(awayTeamRecord);
   const homeTeam = resolveTeam(homeTeamRecord);
 
+  // Sync local color state from server once team records are available
+  useEffect(() => {
+    if (awayTeamRecord?.color) setAwayColor(awayTeamRecord.color);
+  }, [awayTeamRecord?.id, awayTeamRecord?.color]);
+
+  useEffect(() => {
+    if (homeTeamRecord?.color) setHomeColor(homeTeamRecord.color);
+  }, [homeTeamRecord?.id, homeTeamRecord?.color]);
+
   async function handleTeamSelect(team: Team) {
     if (!teamModalSide) return;
     const existingRecord = teamModalSide === 'away' ? awayTeamRecord : homeTeamRecord;
+    const teamColor = team.color ?? '#ffffff';
 
     let breakdownTeamId: string;
     if (existingRecord) {
@@ -874,12 +909,14 @@ export function EditBreakdownContent({ id }: Props) {
       for (const p of slotPlayers) {
         await deletePlayer.mutateAsync({ breakdownId: id, playerId: p.id });
       }
-      await updateTeam.mutateAsync({ breakdownId: id, teamId: existingRecord.id, team_id: team.id });
+      await updateTeam.mutateAsync({ breakdownId: id, teamId: existingRecord.id, team_id: team.id, color: teamColor });
       breakdownTeamId = existingRecord.id;
     } else {
-      const newBT = await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: teamModalSide });
+      const newBT = await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: teamModalSide, color: teamColor });
       breakdownTeamId = newBT.id;
     }
+    if (teamModalSide === 'away') setAwayColor(teamColor);
+    else setHomeColor(teamColor);
     setTeamModalSide(null);
 
     // Auto-populate default players for the selected team
@@ -1146,7 +1183,13 @@ export function EditBreakdownContent({ id }: Props) {
                     <div>
                       <TeamSlot side="away" selectedTeam={awayTeam} onSelect={() => setTeamModalSide('away')} />
                       {awayTeamRecord && (
-                        <div className="mt-2 flex justify-end">
+                        <div className="mt-2 flex items-center justify-between">
+                          <ColorPicker
+                            label="Jersey Color"
+                            value={awayColor}
+                            onChange={setAwayColor}
+                            onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: awayTeamRecord.id, color: awayColor })}
+                          />
                           <button
                             onClick={() => setConfirmRemoveTeamId(awayTeamRecord.id)}
                             className="text-xs text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -1173,7 +1216,13 @@ export function EditBreakdownContent({ id }: Props) {
                     <div>
                       <TeamSlot side="home" selectedTeam={homeTeam} onSelect={() => setTeamModalSide('home')} />
                       {homeTeamRecord && (
-                        <div className="mt-2 flex justify-end">
+                        <div className="mt-2 flex items-center justify-between">
+                          <ColorPicker
+                            label="Jersey Color"
+                            value={homeColor}
+                            onChange={setHomeColor}
+                            onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: homeTeamRecord.id, color: homeColor })}
+                          />
                           <button
                             onClick={() => setConfirmRemoveTeamId(homeTeamRecord.id)}
                             className="text-xs text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"

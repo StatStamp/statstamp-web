@@ -7,6 +7,7 @@ export interface Team {
   name: string;
   league_name: string | null;
   abbreviation: string | null;
+  color: string | null;
   is_public: boolean;
   created_at: string;
   updated_at: string;
