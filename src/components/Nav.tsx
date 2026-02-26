@@ -59,6 +59,7 @@ function NavItems({ onAction }: { onAction?: () => void }) {
     <>
       <div className="flex-1 p-3 space-y-1 overflow-y-auto">
         <NavLink href="/" onClick={onAction}>Explore</NavLink>
+        <NavLink href="/participants" onClick={onAction}>Teams &amp; Players</NavLink>
 
         {user && (
           <>
@@ -71,8 +72,6 @@ function NavItems({ onAction }: { onAction?: () => void }) {
             <NavLink href="/breakdowns" onClick={onAction}>Breakdowns</NavLink>
             <NavLink href="/collections" onClick={onAction}>Templates</NavLink>
             <NavLink href="/event-types" onClick={onAction}>Event Types</NavLink>
-            <NavLink href="/teams" onClick={onAction}>Teams</NavLink>
-            <NavLink href="/players" onClick={onAction}>Players</NavLink>
           </>
         )}
       </div>

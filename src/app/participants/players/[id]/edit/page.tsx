@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { EditPlayerContent } from './EditPlayerContent';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -6,5 +6,5 @@ interface PageProps {
 
 export default async function EditPlayerPage({ params }: PageProps) {
   const { id } = await params;
-  redirect(`/participants/players/${id}/edit`);
+  return <EditPlayerContent id={id} />;
 }

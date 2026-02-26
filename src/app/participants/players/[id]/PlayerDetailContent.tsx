@@ -9,7 +9,7 @@ interface Props {
   id: string;
 }
 
-export function PlayerContent({ id }: Props) {
+export function PlayerDetailContent({ id }: Props) {
   const { user } = useAuth();
   const { data: player, isLoading, isError } = usePlayer(id);
 
@@ -43,7 +43,14 @@ export function PlayerContent({ id }: Props) {
           {player && (
             <>
               <div className="flex items-start justify-between gap-4 mb-6">
-                <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{player.name}</h1>
+                <div>
+                  <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{player.name}</h1>
+                  {player.is_verified && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400 mt-1">
+                      ✓ Verified by StatStamp
+                    </span>
+                  )}
+                </div>
                 {canEdit && (
                   <Link
                     href={`/participants/players/${player.id}/edit`}
@@ -61,14 +68,10 @@ export function PlayerContent({ id }: Props) {
                     {player.number ?? <span className="text-zinc-400 dark:text-zinc-600">—</span>}
                   </dd>
                 </div>
-                {player.is_verified && (
+                {(player.breakdown_players_count ?? 0) > 0 && (
                   <div className="flex items-center px-4 py-3 gap-4">
-                    <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0">Status</dt>
-                    <dd>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
-                        ✓ Verified by StatStamp
-                      </span>
-                    </dd>
+                    <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0">Breakdowns</dt>
+                    <dd className="text-sm text-zinc-900 dark:text-zinc-100">{player.breakdown_players_count}</dd>
                   </div>
                 )}
               </dl>

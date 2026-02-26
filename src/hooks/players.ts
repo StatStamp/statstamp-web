@@ -6,10 +6,14 @@ interface PaginatedResponse<T> {
   data: T[];
 }
 
-export function usePlayers(search?: string, options?: { enabled?: boolean }) {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+export function usePlayers(search?: string, options?: { enabled?: boolean; mine?: boolean }) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (options?.mine) params.set('mine', '1');
+  const qs = params.toString() ? `?${params}` : '';
+
   return useQuery<Player[]>({
-    queryKey: ['players', search ?? ''],
+    queryKey: ['players', options?.mine ? 'mine' : 'all', search ?? ''],
     queryFn: async () => {
       const res = await apiFetch<PaginatedResponse<Player>>(`/players${qs}`);
       return res.data;
@@ -19,16 +23,7 @@ export function usePlayers(search?: string, options?: { enabled?: boolean }) {
 }
 
 export function useMyPlayers(search: string, enabled = true) {
-  return useQuery<Player[]>({
-    queryKey: ['players', 'mine', search],
-    queryFn: async () => {
-      const params = new URLSearchParams({ mine: '1' });
-      if (search) params.set('search', search);
-      const res = await apiFetch<PaginatedResponse<Player>>(`/players?${params}`);
-      return res.data;
-    },
-    enabled,
-  });
+  return usePlayers(search, { enabled, mine: true });
 }
 
 export function usePlayer(id: string | null) {
@@ -44,7 +39,7 @@ export function usePlayer(id: string | null) {
 
 export function useCreatePlayer() {
   const queryClient = useQueryClient();
-  return useMutation<Player, ApiError, { name: string; number?: string | null; is_public?: boolean }>({
+  return useMutation<Player, ApiError, { name: string; number?: string | null }>({
     mutationFn: (data) =>
       apiFetch<{ data: Player }>('/players', { method: 'POST', body: data }).then((r) => r.data),
     onSuccess: () => {
@@ -55,7 +50,7 @@ export function useCreatePlayer() {
 
 export function useUpdatePlayer(id: string) {
   const queryClient = useQueryClient();
-  return useMutation<Player, ApiError, { name?: string; number?: string | null; is_public?: boolean }>({
+  return useMutation<Player, ApiError, { name?: string; number?: string | null; update_own_breakdowns?: boolean }>({
     mutationFn: (data) =>
       apiFetch<{ data: Player }>(`/players/${id}`, { method: 'PATCH', body: data }).then((r) => r.data),
     onSuccess: () => {

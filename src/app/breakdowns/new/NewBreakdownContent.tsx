@@ -298,11 +298,6 @@ function PlayerSearchPanel({
                   <span className="text-xs text-zinc-400 dark:text-zinc-500">#{player.number}</span>
                 )}
               </div>
-              {player.default_teams && player.default_teams.length > 0 && (
-                <span className="text-xs text-zinc-400 dark:text-zinc-500 truncate">
-                  {player.default_teams.map((t) => t.name).join(' | ')}
-                </span>
-              )}
             </button>
           ))
         )}
@@ -625,8 +620,8 @@ function TeamSlot({
                 {selectedTeam.abbreviation}
               </span>
             )}
-            {selectedTeam.league_name && (
-              <span className="text-xs text-zinc-400 dark:text-zinc-500">{selectedTeam.league_name}</span>
+            {selectedTeam.leagues?.[0]?.name && (
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">{selectedTeam.leagues[0].name}</span>
             )}
           </div>
         </div>
@@ -766,8 +761,8 @@ function TeamSelectModal({
                   className="w-full flex flex-col px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                 >
                   <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{team.name}</span>
-                  {team.league_name && (
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{team.league_name}</span>
+                  {team.leagues?.[0]?.name && (
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{team.leagues[0].name}</span>
                   )}
                 </button>
               ))
@@ -1019,7 +1014,6 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
               const newPlayer = await createPlayer.mutateAsync({
                 name: entry.name.trim(),
                 number: entry.jerseyNumber.trim() || null,
-                is_public: true,
               });
 
               if (entry.addToDefaultRoster) {
@@ -1050,7 +1044,6 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
             const newPlayer = await createPlayer.mutateAsync({
               name: entry.name.trim(),
               number: entry.jerseyNumber.trim() || null,
-              is_public: true,
             });
 
             await createBreakdownPlayer.mutateAsync({

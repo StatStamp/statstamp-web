@@ -1,5 +1,5 @@
-import { NewTeamContent } from './NewTeamContent';
+import { redirect } from 'next/navigation';
 
 export default function NewTeamPage() {
-  return <NewTeamContent />;
+  redirect('/participants/teams/new');
 }
