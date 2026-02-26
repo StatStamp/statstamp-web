@@ -8,8 +8,69 @@ export interface Collection {
   description: string | null;
   is_public: boolean;
   breakdowns_count?: number;
+  other_users_breakdowns_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface CollectionStatAddend {
+  id: string;
+  addend_event_type_id: string | null;
+  addend_stat_id: string | null;
+  display_order: number;
+  multiplier: number;
+}
+
+export interface CollectionStat {
+  id: string;
+  collection_id: string;
+  name: string;
+  abbreviation: string | null;
+  display_order: number;
+  type: 'sum' | 'quotient' | 'system';
+  numerator_event_type_id: string | null;
+  numerator_stat_id: string | null;
+  denominator_event_type_id: string | null;
+  denominator_stat_id: string | null;
+  system_stat_type: string | null;
+  plus_minus_stat_id: string | null;
+  addends: CollectionStatAddend[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionStatCreateInput {
+  name: string;
+  abbreviation?: string | null;
+  display_order?: number;
+  type: 'sum' | 'quotient';
+  addends?: {
+    addend_event_type_id?: string | null;
+    addend_stat_id?: string | null;
+    display_order?: number;
+    multiplier?: number;
+  }[];
+  numerator_event_type_id?: string | null;
+  numerator_stat_id?: string | null;
+  denominator_event_type_id?: string | null;
+  denominator_stat_id?: string | null;
+}
+
+export interface CollectionStatUpdateInput {
+  statId: string;
+  name?: string;
+  abbreviation?: string | null;
+  display_order?: number;
+  addends?: {
+    addend_event_type_id?: string | null;
+    addend_stat_id?: string | null;
+    display_order?: number;
+    multiplier?: number;
+  }[];
+  numerator_event_type_id?: string | null;
+  numerator_stat_id?: string | null;
+  denominator_event_type_id?: string | null;
+  denominator_stat_id?: string | null;
 }
 
 export interface WorkflowOption {
@@ -320,5 +381,55 @@ export function useRemoveCollectionEventType(collectionId: string) {
         { method: 'DELETE' },
       ).then(() => undefined),
     onSuccess: () => invalidateCollectionEventTypes(queryClient, collectionId),
+  });
+}
+
+// ── Collection stats ───────────────────────────────────────────────────────────
+
+function invalidateCollectionStats(queryClient: ReturnType<typeof useQueryClient>, collectionId: string) {
+  queryClient.invalidateQueries({ queryKey: ['collections', collectionId, 'stats'] });
+}
+
+export function useCollectionStats(collectionId: string | null) {
+  return useQuery<CollectionStat[]>({
+    queryKey: ['collections', collectionId, 'stats'],
+    queryFn: async () => {
+      const res = await apiFetch<{ data: CollectionStat[] }>(`/collections/${collectionId}/stats`);
+      return res.data;
+    },
+    enabled: collectionId !== null,
+  });
+}
+
+export function useCreateCollectionStat(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<CollectionStat, ApiError, CollectionStatCreateInput>({
+    mutationFn: (data) =>
+      apiFetch<{ data: CollectionStat }>(`/collections/${collectionId}/stats`, {
+        method: 'POST',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: () => invalidateCollectionStats(queryClient, collectionId),
+  });
+}
+
+export function useUpdateCollectionStat(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<CollectionStat, ApiError, CollectionStatUpdateInput>({
+    mutationFn: ({ statId, ...data }) =>
+      apiFetch<{ data: CollectionStat }>(`/collections/${collectionId}/stats/${statId}`, {
+        method: 'PATCH',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: () => invalidateCollectionStats(queryClient, collectionId),
+  });
+}
+
+export function useDeleteCollectionStat(collectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<void, ApiError, string>({
+    mutationFn: (statId) =>
+      apiFetch(`/collections/${collectionId}/stats/${statId}`, { method: 'DELETE' }).then(() => undefined),
+    onSuccess: () => invalidateCollectionStats(queryClient, collectionId),
   });
 }

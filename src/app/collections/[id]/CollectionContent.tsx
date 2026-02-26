@@ -11,6 +11,10 @@ import {
   useCollection,
   useCollectionWorkflows,
   useCollectionEventTypes,
+  useCollectionStats,
+  useCreateCollectionStat,
+  useUpdateCollectionStat,
+  useDeleteCollectionStat,
   useCreateWorkflow,
   useDeleteWorkflow,
   useCreateWorkflowStep,
@@ -19,6 +23,7 @@ import {
   useRemoveCollectionEventType,
   type CollectionWorkflow,
   type CollectionEventType,
+  type CollectionStat,
 } from '@/hooks/collections';
 import { useCreateEventType, useSearchPublicEventTypes, type EventType } from '@/hooks/eventTypes';
 
@@ -621,6 +626,883 @@ function DuplicateModal({ collectionId, defaultName, defaultDescription, onClose
   );
 }
 
+// ── Stat Calculations helpers ─────────────────────────────────────────────────
+
+function statTypeLabel(type: string): string {
+  if (type === 'sum') return 'Addition';
+  if (type === 'quotient') return 'Quotient';
+  return type;
+}
+
+function statTypeBadgeClass(type: string): string {
+  if (type === 'sum') return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400';
+  if (type === 'quotient') return 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400';
+  return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400';
+}
+
+function resolveOperandLabel(
+  eventTypeId: string | null,
+  statId: string | null,
+  eventTypes: CollectionEventType[],
+  allStats: CollectionStat[],
+): string {
+  if (eventTypeId) {
+    const et = eventTypes.find((e) => e.id === eventTypeId);
+    return et?.abbreviation ?? et?.name ?? '?';
+  }
+  if (statId) {
+    const s = allStats.find((s) => s.id === statId);
+    return s?.abbreviation ?? s?.name ?? '?';
+  }
+  return '?';
+}
+
+function renderFormula(
+  stat: CollectionStat,
+  eventTypes: CollectionEventType[],
+  allStats: CollectionStat[],
+): string {
+  if (stat.type === 'sum') {
+    const sorted = [...(stat.addends ?? [])].sort((a, b) => a.display_order - b.display_order);
+    if (sorted.length === 0) return '—';
+    return sorted
+      .map((a) => {
+        const label = resolveOperandLabel(a.addend_event_type_id, a.addend_stat_id, eventTypes, allStats);
+        return a.multiplier === 1 ? label : `${a.multiplier}×${label}`;
+      })
+      .join(' + ');
+  }
+  if (stat.type === 'quotient') {
+    const num = resolveOperandLabel(stat.numerator_event_type_id, stat.numerator_stat_id, eventTypes, allStats);
+    const den = resolveOperandLabel(stat.denominator_event_type_id, stat.denominator_stat_id, eventTypes, allStats);
+    return `${num} / ${den}`;
+  }
+  return '—';
+}
+
+function operandValue(eventTypeId: string | null, statId: string | null): string {
+  if (eventTypeId) return `et:${eventTypeId}`;
+  if (statId) return `stat:${statId}`;
+  return '';
+}
+
+function parseOperandStr(val: string): { event_type_id: string | null; stat_id: string | null } {
+  if (!val) return { event_type_id: null, stat_id: null };
+  const colonIdx = val.indexOf(':');
+  const type = val.slice(0, colonIdx);
+  const id = val.slice(colonIdx + 1);
+  if (type === 'et') return { event_type_id: id, stat_id: null };
+  return { event_type_id: null, stat_id: id };
+}
+
+// ── OperandSelect ─────────────────────────────────────────────────────────────
+
+interface OperandSelectProps {
+  value: string;
+  onChange: (v: string) => void;
+  eventTypes: CollectionEventType[];
+  otherStats: CollectionStat[];
+}
+
+function OperandSelect({ value, onChange, eventTypes, otherStats }: OperandSelectProps) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+    >
+      <option value="">— Select —</option>
+      {eventTypes.length > 0 && (
+        <optgroup label="Event Types">
+          {eventTypes.map((et) => (
+            <option key={et.id} value={`et:${et.id}`}>
+              {et.abbreviation ? `${et.abbreviation} — ${et.name}` : et.name}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {otherStats.length > 0 && (
+        <optgroup label="Stats">
+          {otherStats.map((s) => (
+            <option key={s.id} value={`stat:${s.id}`}>
+              {s.abbreviation ? `${s.abbreviation} — ${s.name}` : s.name}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </select>
+  );
+}
+
+// ── StatDetailView ────────────────────────────────────────────────────────────
+
+interface StatDetailViewProps {
+  collectionId: string;
+  stat: CollectionStat;
+  isOwner: boolean;
+  canEdit: boolean;
+  usedInOtherBreakdowns: boolean;
+  eventTypes: CollectionEventType[];
+  allStats: CollectionStat[];
+  onBack: () => void;
+  onEdit: () => void;
+  onDeleted: () => void;
+}
+
+function StatDetailView({
+  collectionId,
+  stat,
+  isOwner,
+  canEdit,
+  usedInOtherBreakdowns,
+  eventTypes,
+  allStats,
+  onBack,
+  onEdit,
+  onDeleted,
+}: StatDetailViewProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteStat = useDeleteCollectionStat(collectionId);
+
+  function handleDelete() {
+    deleteStat.mutate(stat.id, { onSuccess: onDeleted });
+  }
+
+  return (
+    <>
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-4"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M9 12L4 7l5-5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" />
+        </svg>
+        Stat Calculations
+      </button>
+
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{stat.name}</h2>
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statTypeBadgeClass(stat.type)}`}>
+            {statTypeLabel(stat.type)}
+          </span>
+        </div>
+        {canEdit && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onEdit}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+            >
+              <EditIcon />
+              Edit
+            </button>
+            {!confirmDelete ? (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                Delete
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">Sure?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleteStat.isPending}
+                  className="rounded-lg bg-red-600 hover:bg-red-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 transition-colors"
+                >
+                  {deleteStat.isPending ? 'Deleting…' : 'Delete'}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {isOwner && usedInOtherBreakdowns && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-6 text-sm text-amber-800 dark:text-amber-300">
+          This template is used in another user&apos;s breakdowns. Stat calculations cannot be edited while the template is in use by others.
+        </div>
+      )}
+
+      {deleteStat.isError && (
+        <p className="text-sm text-red-600 dark:text-red-400 mb-4">Could not delete stat. Please try again.</p>
+      )}
+
+      <dl className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
+        <div className="flex items-center px-4 py-3 gap-4">
+          <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0">Name</dt>
+          <dd className="text-sm text-zinc-900 dark:text-zinc-100">{stat.name}</dd>
+        </div>
+        <div className="flex items-center px-4 py-3 gap-4">
+          <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0">Abbreviation</dt>
+          <dd className="text-sm font-mono text-zinc-900 dark:text-zinc-100">
+            {stat.abbreviation ?? <span className="text-zinc-400 dark:text-zinc-500 font-sans italic">None</span>}
+          </dd>
+        </div>
+        <div className="flex items-center px-4 py-3 gap-4">
+          <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0">Type</dt>
+          <dd>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statTypeBadgeClass(stat.type)}`}>
+              {statTypeLabel(stat.type)}
+            </span>
+          </dd>
+        </div>
+        <div className="flex items-start px-4 py-3 gap-4">
+          <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0 pt-0.5">Formula</dt>
+          <dd className="text-sm font-mono text-zinc-900 dark:text-zinc-100">
+            {renderFormula(stat, eventTypes, allStats)}
+          </dd>
+        </div>
+      </dl>
+    </>
+  );
+}
+
+// ── StatEditForm ──────────────────────────────────────────────────────────────
+
+interface AddendDraft {
+  uid: string;
+  operand: string;
+  multiplier: string;
+}
+
+interface StatEditFormProps {
+  collectionId: string;
+  stat: CollectionStat;
+  eventTypes: CollectionEventType[];
+  otherStats: CollectionStat[];
+  onCancel: () => void;
+  onSaved: () => void;
+}
+
+function StatEditForm({ collectionId, stat, eventTypes, otherStats, onCancel, onSaved }: StatEditFormProps) {
+  const updateStat = useUpdateCollectionStat(collectionId);
+
+  const [name, setName] = useState(stat.name);
+  const [abbreviation, setAbbreviation] = useState(stat.abbreviation ?? '');
+
+  const [addends, setAddends] = useState<AddendDraft[]>(() =>
+    [...(stat.addends ?? [])].sort((a, b) => a.display_order - b.display_order).map((a) => ({
+      uid: Math.random().toString(36).slice(2),
+      operand: operandValue(a.addend_event_type_id, a.addend_stat_id),
+      multiplier: String(a.multiplier),
+    })),
+  );
+
+  const [numerator, setNumerator] = useState(() => operandValue(stat.numerator_event_type_id, stat.numerator_stat_id));
+  const [denominator, setDenominator] = useState(() => operandValue(stat.denominator_event_type_id, stat.denominator_stat_id));
+
+  const isValid =
+    name.trim().length > 0 &&
+    (stat.type === 'sum'
+      ? addends.length > 0 && addends.every((a) => a.operand !== '')
+      : stat.type === 'quotient'
+        ? numerator !== '' && denominator !== ''
+        : true);
+
+  function handleSubmit(e: React.SyntheticEvent) {
+    e.preventDefault();
+    const base = {
+      statId: stat.id,
+      name: name.trim(),
+      abbreviation: abbreviation.trim() || null,
+    };
+
+    if (stat.type === 'sum') {
+      updateStat.mutate(
+        {
+          ...base,
+          addends: addends.map((a, i) => {
+            const { event_type_id, stat_id } = parseOperandStr(a.operand);
+            return {
+              addend_event_type_id: event_type_id,
+              addend_stat_id: stat_id,
+              display_order: i,
+              multiplier: parseFloat(a.multiplier) || 1,
+            };
+          }),
+        },
+        { onSuccess: onSaved },
+      );
+    } else if (stat.type === 'quotient') {
+      const { event_type_id: numEt, stat_id: numStat } = parseOperandStr(numerator);
+      const { event_type_id: denEt, stat_id: denStat } = parseOperandStr(denominator);
+      updateStat.mutate(
+        {
+          ...base,
+          numerator_event_type_id: numEt,
+          numerator_stat_id: numStat,
+          denominator_event_type_id: denEt,
+          denominator_stat_id: denStat,
+        },
+        { onSuccess: onSaved },
+      );
+    }
+  }
+
+  function addAddend() {
+    setAddends((prev) => [...prev, { uid: Math.random().toString(36).slice(2), operand: '', multiplier: '1' }]);
+  }
+
+  function removeAddend(uid: string) {
+    setAddends((prev) => prev.filter((a) => a.uid !== uid));
+  }
+
+  function updateAddend(uid: string, key: 'operand' | 'multiplier', value: string) {
+    setAddends((prev) => prev.map((a) => (a.uid === uid ? { ...a, [key]: value } : a)));
+  }
+
+  const inputClass =
+    'w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition';
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mb-4"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M9 12L4 7l5-5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" />
+        </svg>
+        Cancel
+      </button>
+
+      <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-6">
+        Edit: {stat.name}
+      </h2>
+
+      <div className="space-y-5">
+        {/* Name */}
+        <div>
+          <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className={inputClass}
+          />
+        </div>
+
+        {/* Abbreviation */}
+        <div>
+          <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            Abbreviation <span className="text-zinc-400 font-normal">(optional, max 20 chars)</span>
+          </label>
+          <input
+            type="text"
+            value={abbreviation}
+            onChange={(e) => setAbbreviation(e.target.value)}
+            maxLength={20}
+            className={inputClass}
+          />
+        </div>
+
+        {/* Formula — Sum */}
+        {stat.type === 'sum' && (
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              Formula <span className="text-zinc-400 font-normal">(Addition)</span>
+            </label>
+            <div className="space-y-2">
+              {addends.map((addend, idx) => (
+                <div key={addend.uid} className="flex items-center gap-2">
+                  {idx > 0 && <span className="text-sm text-zinc-400 dark:text-zinc-500 w-4 text-center">+</span>}
+                  {idx === 0 && <span className="w-4" />}
+                  <OperandSelect
+                    value={addend.operand}
+                    onChange={(v) => updateAddend(addend.uid, 'operand', v)}
+                    eventTypes={eventTypes}
+                    otherStats={otherStats}
+                  />
+                  <span className="text-sm text-zinc-400 dark:text-zinc-500">×</span>
+                  <input
+                    type="number"
+                    value={addend.multiplier}
+                    onChange={(e) => updateAddend(addend.uid, 'multiplier', e.target.value)}
+                    min="0"
+                    step="any"
+                    className="w-20 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+                  />
+                  {addends.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeAddend(addend.uid)}
+                      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      title="Remove addend"
+                    >
+                      <MinusIcon />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addAddend}
+                className="inline-flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mt-1"
+              >
+                <PlusIcon />
+                Add term
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Formula — Quotient */}
+        {stat.type === 'quotient' && (
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              Formula <span className="text-zinc-400 font-normal">(Quotient)</span>
+            </label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 w-24 shrink-0">Numerator</span>
+                <OperandSelect
+                  value={numerator}
+                  onChange={setNumerator}
+                  eventTypes={eventTypes}
+                  otherStats={otherStats}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 w-24 shrink-0">Denominator</span>
+                <OperandSelect
+                  value={denominator}
+                  onChange={setDenominator}
+                  eventTypes={eventTypes}
+                  otherStats={otherStats}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {updateStat.isError && (
+        <p className="text-sm text-red-600 dark:text-red-400 mt-4">
+          {(updateStat.error as { message?: string })?.message ?? 'Something went wrong. Please try again.'}
+        </p>
+      )}
+
+      <div className="flex items-center justify-end gap-3 mt-6">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={!isValid || updateStat.isPending}
+          className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors"
+        >
+          {updateStat.isPending ? 'Saving…' : 'Save changes'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ── CreateStatModal ───────────────────────────────────────────────────────────
+
+interface CreateStatModalProps {
+  collectionId: string;
+  nextDisplayOrder: number;
+  eventTypes: CollectionEventType[];
+  existingStats: CollectionStat[];
+  onClose: () => void;
+}
+
+function CreateStatModal({ collectionId, nextDisplayOrder, eventTypes, existingStats, onClose }: CreateStatModalProps) {
+  const createStat = useCreateCollectionStat(collectionId);
+
+  const [type, setType] = useState<'sum' | 'quotient'>('sum');
+  const [name, setName] = useState('');
+  const [abbreviation, setAbbreviation] = useState('');
+
+  const [addends, setAddends] = useState<AddendDraft[]>([
+    { uid: Math.random().toString(36).slice(2), operand: '', multiplier: '1' },
+  ]);
+  const [numerator, setNumerator] = useState('');
+  const [denominator, setDenominator] = useState('');
+
+  const isValid =
+    name.trim().length > 0 &&
+    (type === 'sum'
+      ? addends.length > 0 && addends.every((a) => a.operand !== '')
+      : numerator !== '' && denominator !== '');
+
+  function handleSubmit(e: React.SyntheticEvent) {
+    e.preventDefault();
+    const base = {
+      name: name.trim(),
+      abbreviation: abbreviation.trim() || null,
+      display_order: nextDisplayOrder,
+      type,
+    };
+
+    if (type === 'sum') {
+      createStat.mutate(
+        {
+          ...base,
+          addends: addends.map((a, i) => {
+            const { event_type_id, stat_id } = parseOperandStr(a.operand);
+            return {
+              addend_event_type_id: event_type_id,
+              addend_stat_id: stat_id,
+              display_order: i,
+              multiplier: parseFloat(a.multiplier) || 1,
+            };
+          }),
+        },
+        { onSuccess: onClose },
+      );
+    } else {
+      const { event_type_id: numEt, stat_id: numStat } = parseOperandStr(numerator);
+      const { event_type_id: denEt, stat_id: denStat } = parseOperandStr(denominator);
+      createStat.mutate(
+        {
+          ...base,
+          numerator_event_type_id: numEt,
+          numerator_stat_id: numStat,
+          denominator_event_type_id: denEt,
+          denominator_stat_id: denStat,
+        },
+        { onSuccess: onClose },
+      );
+    }
+  }
+
+  function addAddend() {
+    setAddends((prev) => [...prev, { uid: Math.random().toString(36).slice(2), operand: '', multiplier: '1' }]);
+  }
+
+  function removeAddend(uid: string) {
+    setAddends((prev) => prev.filter((a) => a.uid !== uid));
+  }
+
+  function updateAddend(uid: string, key: 'operand' | 'multiplier', value: string) {
+    setAddends((prev) => prev.map((a) => (a.uid === uid ? { ...a, [key]: value } : a)));
+  }
+
+  const inputClass =
+    'w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-md mx-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 pt-5 pb-4">
+          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-4">New stat calculation</h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Type selector */}
+            <div>
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Type</label>
+              <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-sm">
+                {(['sum', 'quotient'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    className={`flex-1 px-3 py-2 font-medium transition-colors ${
+                      type === t
+                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {statTypeLabel(t)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoFocus
+                className={inputClass}
+              />
+            </div>
+
+            {/* Abbreviation */}
+            <div>
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Abbreviation <span className="text-zinc-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={abbreviation}
+                onChange={(e) => setAbbreviation(e.target.value)}
+                maxLength={20}
+                className={inputClass}
+              />
+            </div>
+
+            {/* Formula — Sum */}
+            {type === 'sum' && (
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">Formula</label>
+                <div className="space-y-2">
+                  {addends.map((addend, idx) => (
+                    <div key={addend.uid} className="flex items-center gap-2">
+                      {idx > 0 && <span className="text-sm text-zinc-400 dark:text-zinc-500 w-4 text-center">+</span>}
+                      {idx === 0 && <span className="w-4" />}
+                      <OperandSelect
+                        value={addend.operand}
+                        onChange={(v) => updateAddend(addend.uid, 'operand', v)}
+                        eventTypes={eventTypes}
+                        otherStats={existingStats}
+                      />
+                      <span className="text-sm text-zinc-400 dark:text-zinc-500">×</span>
+                      <input
+                        type="number"
+                        value={addend.multiplier}
+                        onChange={(e) => updateAddend(addend.uid, 'multiplier', e.target.value)}
+                        min="0"
+                        step="any"
+                        className="w-20 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                      />
+                      {addends.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeAddend(addend.uid)}
+                          className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          title="Remove term"
+                        >
+                          <MinusIcon />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addAddend}
+                    className="inline-flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors mt-1"
+                  >
+                    <PlusIcon />
+                    Add term
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Formula — Quotient */}
+            {type === 'quotient' && (
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">Formula</label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 w-24 shrink-0">Numerator</span>
+                    <OperandSelect
+                      value={numerator}
+                      onChange={setNumerator}
+                      eventTypes={eventTypes}
+                      otherStats={existingStats}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 w-24 shrink-0">Denominator</span>
+                    <OperandSelect
+                      value={denominator}
+                      onChange={setDenominator}
+                      eventTypes={eventTypes}
+                      otherStats={existingStats}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {createStat.isError && (
+              <p className="text-xs text-red-600 dark:text-red-400">Something went wrong. Please try again.</p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={createStat.isPending}
+                className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!isValid || createStat.isPending}
+                className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors"
+              >
+                {createStat.isPending ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── StatCalculationsTab ───────────────────────────────────────────────────────
+
+interface StatCalculationsTabProps {
+  collectionId: string;
+  isOwner: boolean;
+  usedInOtherBreakdowns: boolean;
+  stats: CollectionStat[] | undefined;
+  isLoading: boolean;
+  eventTypes: CollectionEventType[] | undefined;
+}
+
+function StatCalculationsTab({
+  collectionId,
+  isOwner,
+  usedInOtherBreakdowns,
+  stats,
+  isLoading,
+  eventTypes,
+}: StatCalculationsTabProps) {
+  const [selectedStatId, setSelectedStatId] = useState<string | null>(null);
+  const [view, setView] = useState<'list' | 'detail' | 'edit'>('list');
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const visibleStats = (stats ?? []).filter((s) => s.type !== 'system');
+  const selectedStat = selectedStatId ? (visibleStats.find((s) => s.id === selectedStatId) ?? null) : null;
+  const canEdit = isOwner && !usedInOtherBreakdowns;
+  const etArr = eventTypes ?? [];
+
+  function selectStat(id: string) {
+    setSelectedStatId(id);
+    setView('detail');
+  }
+
+  function backToList() {
+    setSelectedStatId(null);
+    setView('list');
+  }
+
+  if (view === 'edit' && selectedStat) {
+    return (
+      <StatEditForm
+        collectionId={collectionId}
+        stat={selectedStat}
+        eventTypes={etArr}
+        otherStats={visibleStats.filter((s) => s.id !== selectedStat.id)}
+        onCancel={() => setView('detail')}
+        onSaved={() => setView('detail')}
+      />
+    );
+  }
+
+  if (view === 'detail' && selectedStat) {
+    return (
+      <StatDetailView
+        collectionId={collectionId}
+        stat={selectedStat}
+        isOwner={isOwner}
+        canEdit={canEdit}
+        usedInOtherBreakdowns={usedInOtherBreakdowns}
+        eventTypes={etArr}
+        allStats={visibleStats}
+        onBack={backToList}
+        onEdit={() => setView('edit')}
+        onDeleted={backToList}
+      />
+    );
+  }
+
+  // List view
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Stat Calculations</h2>
+        {canEdit && (
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
+          >
+            <PlusIcon />
+            Add stat
+          </button>
+        )}
+      </div>
+
+      {isOwner && usedInOtherBreakdowns && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-4 text-sm text-amber-800 dark:text-amber-300">
+          This template is used in another user&apos;s breakdowns. Stat calculations cannot be edited while the template is in use by others.
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
+      ) : visibleStats.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 py-12 text-center">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">No stat calculations yet</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Stat calculations define derived metrics computed from event counts.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Abbr</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Type</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
+              {visibleStats.map((stat) => (
+                <tr
+                  key={stat.id}
+                  onClick={() => selectStat(stat.id)}
+                  className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                >
+                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{stat.name}</td>
+                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-mono">
+                    {stat.abbreviation ?? <span className="text-zinc-400 dark:text-zinc-600 font-sans">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statTypeBadgeClass(stat.type)}`}>
+                      {statTypeLabel(stat.type)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {createOpen && (
+        <CreateStatModal
+          collectionId={collectionId}
+          nextDisplayOrder={visibleStats.length}
+          eventTypes={etArr}
+          existingStats={visibleStats}
+          onClose={() => setCreateOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 // ── Main page component ───────────────────────────────────────────────────────
 
 export function CollectionContent({ id }: Props) {
@@ -628,12 +1510,14 @@ export function CollectionContent({ id }: Props) {
   const { data: collection, isLoading, isError } = useCollection(id);
   const { data: workflows, isLoading: workflowsLoading } = useCollectionWorkflows(id);
   const { data: eventTypes, isLoading: eventTypesLoading } = useCollectionEventTypes(id);
+  const { data: stats, isLoading: statsLoading } = useCollectionStats(id);
   const createWorkflow = useCreateWorkflow(id);
   const [dupOpen, setDupOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('event-types');
 
   const isOwner = user && collection && user.id === collection.user_id;
   const inUse = (collection?.breakdowns_count ?? 0) > 0;
+  const usedInOtherBreakdowns = (collection?.other_users_breakdowns_count ?? 0) > 0;
 
   function handleAddWorkflow() {
     createWorkflow.mutate({ name: 'New workflow', display_order: (workflows?.length ?? 0) });
@@ -806,10 +1690,14 @@ export function CollectionContent({ id }: Props) {
               )}
 
               {activeTab === 'stat-calculations' && (
-                <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 py-12 text-center">
-                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">Stat Calculations</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Coming soon.</p>
-                </div>
+                <StatCalculationsTab
+                  collectionId={id}
+                  isOwner={!!isOwner}
+                  usedInOtherBreakdowns={usedInOtherBreakdowns}
+                  stats={stats}
+                  isLoading={statsLoading}
+                  eventTypes={eventTypes}
+                />
               )}
             </>
           )}
