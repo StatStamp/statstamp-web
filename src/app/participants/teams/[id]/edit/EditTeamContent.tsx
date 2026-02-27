@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTeam, useUpdateTeam, useDeleteTeam } from '@/hooks/teams';
 import type { ApiError } from '@/lib/api';
 
-const SNAPSHOT_FIELDS = ['name', 'city', 'state', 'country', 'level', 'sport'] as const;
+const SNAPSHOT_FIELDS = ['name', 'abbreviation', 'city', 'state', 'country', 'level', 'sport'] as const;
 
 interface TeamPayload {
   name: string;
