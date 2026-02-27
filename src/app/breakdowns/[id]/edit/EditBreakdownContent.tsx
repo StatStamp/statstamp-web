@@ -28,7 +28,7 @@ import {
 } from '@/hooks/breakdowns';
 import { useTeams, type Team, type Player } from '@/hooks/teams';
 import { usePlayers, useCreatePlayer } from '@/hooks/players';
-import { useTeamRosters } from '@/hooks/rosters';
+import { useTeamRosters, useRoster } from '@/hooks/rosters';
 import { apiFetch, type ApiError } from '@/lib/api';
 
 interface Props {
@@ -720,6 +720,32 @@ function TeamSelectModal({
 // Roster picker modal — shown after team is picked, before finalising
 // ---------------------------------------------------------------------------
 
+function RosterPlayerList({ teamId, rosterId }: { teamId: string; rosterId: string }) {
+  const { data: roster, isLoading } = useRoster(teamId, rosterId);
+  const players = roster?.players ?? [];
+  const MAX = 20;
+  const shown = players.slice(0, MAX);
+  const overflow = players.length - MAX;
+
+  if (isLoading) {
+    return <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5 italic">Loading players…</p>;
+  }
+  if (shown.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-2 w-full">
+      {shown.map((p) => (
+        <span key={p.id} className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+          {p.name}{p.jersey_number ? <span className="text-zinc-400 dark:text-zinc-500"> #{p.jersey_number}</span> : null}
+        </span>
+      ))}
+      {overflow > 0 && (
+        <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">+{overflow} more</span>
+      )}
+    </div>
+  );
+}
+
 function RosterPickerModal({
   teamId,
   teamName,
@@ -784,14 +810,10 @@ function RosterPickerModal({
                     {roster.season}{roster.name ? ` — ${roster.name}` : ''}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 mt-0.5">
-                  {roster.players_count != null && (
-                    <span className="text-xs text-zinc-400 dark:text-zinc-500">{roster.players_count} players</span>
-                  )}
-                  {(roster.breakdown_teams_count ?? 0) > 0 && (
-                    <span className="text-xs text-zinc-400 dark:text-zinc-500">Used in {roster.breakdown_teams_count} breakdowns</span>
-                  )}
-                </div>
+                {(roster.breakdown_teams_count ?? 0) > 0 && (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">Used in {roster.breakdown_teams_count} breakdowns</span>
+                )}
+                <RosterPlayerList teamId={teamId} rosterId={roster.id} />
               </button>
             ))
           )}
