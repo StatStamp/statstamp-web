@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTeams, useMyTeams } from '@/hooks/teams';
-import { usePlayers, useMyPlayers } from '@/hooks/players';
+import { useTeamsPaginated, useMyTeams } from '@/hooks/teams';
+import { usePlayersPaginated, useMyPlayers } from '@/hooks/players';
 
 const LEVEL_LABELS: Record<string, string> = {
   youth: 'Youth',
@@ -41,6 +41,47 @@ function VerifiedBadge() {
   );
 }
 
+function PaginationBar({
+  currentPage,
+  lastPage,
+  total,
+  onPrev,
+  onNext,
+}: {
+  currentPage: number;
+  lastPage: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (lastPage <= 1) return null;
+
+  const btnClass = (disabled: boolean) =>
+    [
+      'px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors',
+      disabled
+        ? 'border-zinc-100 dark:border-zinc-800 text-zinc-300 dark:text-zinc-600 cursor-default'
+        : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600',
+    ].join(' ');
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100 dark:border-zinc-800">
+      <p className="text-xs text-zinc-400 dark:text-zinc-500">{total} total</p>
+      <div className="flex items-center gap-3">
+        <button onClick={onPrev} disabled={currentPage === 1} className={btnClass(currentPage === 1)}>
+          ← Previous
+        </button>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          Page {currentPage} of {lastPage}
+        </span>
+        <button onClick={onNext} disabled={currentPage === lastPage} className={btnClass(currentPage === lastPage)}>
+          Next →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ParticipantsContent() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -52,6 +93,8 @@ export function ParticipantsContent() {
   const [playerDebouncedSearch, setPlayerDebouncedSearch] = useState('');
   const [teamsMineOnly, setTeamsMineOnly] = useState(false);
   const [playersMineOnly, setPlayersMineOnly] = useState(false);
+  const [teamPage, setTeamPage] = useState(1);
+  const [playerPage, setPlayerPage] = useState(1);
 
   useEffect(() => {
     const t = setTimeout(() => setTeamDebouncedSearch(teamSearch), 300);
@@ -63,15 +106,26 @@ export function ParticipantsContent() {
     return () => clearTimeout(t);
   }, [playerSearch]);
 
-  // Main queries — switch between all and mine based on toggle
-  const { data: teams, isLoading: teamsLoading } = useTeams(
+  // Reset to page 1 when search or filter changes
+  useEffect(() => { setTeamPage(1); }, [teamDebouncedSearch, teamsMineOnly]);
+  useEffect(() => { setPlayerPage(1); }, [playerDebouncedSearch, playersMineOnly]);
+
+  // Main paginated queries
+  const { data: teamsData, isLoading: teamsLoading } = useTeamsPaginated(
     teamDebouncedSearch,
+    teamPage,
     { mine: teamsMineOnly },
   );
-  const { data: players, isLoading: playersLoading } = usePlayers(
+  const { data: playersData, isLoading: playersLoading } = usePlayersPaginated(
     playerDebouncedSearch,
+    playerPage,
     { mine: playersMineOnly },
   );
+
+  const teams = teamsData?.data ?? [];
+  const teamsMeta = teamsData?.meta;
+  const players = playersData?.data ?? [];
+  const playersMeta = playersData?.meta;
 
   // Background mine checks — determine if the toggle should be shown
   const { data: myTeams } = useMyTeams('', !authLoading && !!user);
@@ -80,7 +134,6 @@ export function ParticipantsContent() {
   const showTeamsToggle = !!user && (myTeams?.length ?? 0) > 0;
   const showPlayersToggle = !!user && (myPlayers?.length ?? 0) > 0;
 
-  // Reset mine filter when toggling tabs so state doesn't bleed
   function handleTabChange(tab: 'teams' | 'players') {
     setActiveTab(tab);
   }
@@ -170,7 +223,7 @@ export function ParticipantsContent() {
 
               {teamsLoading ? (
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
-              ) : !teams || teams.length === 0 ? (
+              ) : teams.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   {teamDebouncedSearch ? (
                     <>
@@ -265,6 +318,15 @@ export function ParticipantsContent() {
                       })}
                     </tbody>
                   </table>
+                  {teamsMeta && (
+                    <PaginationBar
+                      currentPage={teamsMeta.current_page}
+                      lastPage={teamsMeta.last_page}
+                      total={teamsMeta.total}
+                      onPrev={() => setTeamPage((p) => p - 1)}
+                      onNext={() => setTeamPage((p) => p + 1)}
+                    />
+                  )}
                 </div>
               )}
             </>
@@ -301,7 +363,7 @@ export function ParticipantsContent() {
 
               {playersLoading ? (
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
-              ) : !players || players.length === 0 ? (
+              ) : players.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   {playerDebouncedSearch ? (
                     <>
@@ -381,6 +443,15 @@ export function ParticipantsContent() {
                       })}
                     </tbody>
                   </table>
+                  {playersMeta && (
+                    <PaginationBar
+                      currentPage={playersMeta.current_page}
+                      lastPage={playersMeta.last_page}
+                      total={playersMeta.total}
+                      onPrev={() => setPlayerPage((p) => p - 1)}
+                      onNext={() => setPlayerPage((p) => p + 1)}
+                    />
+                  )}
                 </div>
               )}
             </>

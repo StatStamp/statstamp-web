@@ -1,9 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 import type { Player } from './teams';
 
 interface PaginatedResponse<T> {
   data: T[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 export function usePlayers(search?: string, options?: { enabled?: boolean; mine?: boolean }) {
@@ -24,6 +30,20 @@ export function usePlayers(search?: string, options?: { enabled?: boolean; mine?
 
 export function useMyPlayers(search: string, enabled = true) {
   return usePlayers(search, { enabled, mine: true });
+}
+
+export function usePlayersPaginated(search: string, page: number, options?: { mine?: boolean }) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (options?.mine) params.set('mine', '1');
+  params.set('page', String(page));
+  const qs = `?${params}`;
+
+  return useQuery<PaginatedResponse<Player>>({
+    queryKey: ['players', options?.mine ? 'mine' : 'all', search, page],
+    queryFn: async () => apiFetch<PaginatedResponse<Player>>(`/players${qs}`),
+    placeholderData: keepPreviousData,
+  });
 }
 
 export function usePlayer(id: string | null) {

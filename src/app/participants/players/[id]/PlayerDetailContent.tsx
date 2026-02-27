@@ -11,20 +11,15 @@ interface Props {
 }
 
 function RosterRow({ roster }: { roster: PlayerRoster }) {
-  const teamLink = roster.team ? (
-    <Link
-      href={`/participants/teams/${roster.team.id}`}
-      className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline"
-    >
-      {roster.team.name}
-    </Link>
-  ) : null;
-
-  return (
+  const inner = (
     <div className="flex items-center justify-between px-4 py-3 gap-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          {teamLink ?? <span className="text-sm text-zinc-400 dark:text-zinc-600">Unknown team</span>}
+          {roster.team ? (
+            <span className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{roster.team.name}</span>
+          ) : (
+            <span className="text-sm text-zinc-400 dark:text-zinc-600">Unknown team</span>
+          )}
           {roster.is_verified && (
             <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
               Verified
@@ -40,11 +35,27 @@ function RosterRow({ roster }: { roster: PlayerRoster }) {
           {roster.name ? `${roster.name} · ` : ''}{roster.season}
         </p>
       </div>
-      {roster.jersey_number && (
-        <span className="shrink-0 text-sm font-mono text-zinc-600 dark:text-zinc-400">#{roster.jersey_number}</span>
-      )}
+      <div className="shrink-0 flex items-center gap-2">
+        {roster.jersey_number && (
+          <span className="text-sm font-mono text-zinc-600 dark:text-zinc-400">#{roster.jersey_number}</span>
+        )}
+        {roster.team && <span className="text-zinc-300 dark:text-zinc-600">›</span>}
+      </div>
     </div>
   );
+
+  if (roster.team) {
+    return (
+      <Link
+        href={`/participants/teams/${roster.team.id}/rosters/${roster.id}`}
+        className="block hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return inner;
 }
 
 export function PlayerDetailContent({ id }: Props) {
@@ -149,7 +160,7 @@ export function PlayerDetailContent({ id }: Props) {
               {(player.rosters?.length ?? 0) > 0 && (
                 <div>
                   <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Rosters</h2>
-                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
+                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
                     {verifiedRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
                     {otherRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
                   </div>
