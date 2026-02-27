@@ -93,7 +93,7 @@ export function NewTeamContent() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                placeholder="e.g. Duke Blue Devils"
+                placeholder="e.g. Kentucky Wildcats"
                 className={inputClass}
               />
             </div>
@@ -106,7 +106,7 @@ export function NewTeamContent() {
                 type="text"
                 value={abbreviation}
                 onChange={(e) => setAbbreviation(e.target.value)}
-                placeholder="e.g. DUKE"
+                placeholder="e.g. UK"
                 maxLength={10}
                 className={inputClass}
               />
@@ -134,7 +134,7 @@ export function NewTeamContent() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Durham"
+                  placeholder="e.g. Lexington"
                   className={inputClass}
                 />
               </div>
@@ -144,7 +144,7 @@ export function NewTeamContent() {
                   type="text"
                   value={state}
                   onChange={(e) => setState(e.target.value)}
-                  placeholder="e.g. NC"
+                  placeholder="e.g. KY"
                   className={inputClass}
                 />
               </div>
