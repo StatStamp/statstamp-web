@@ -10,7 +10,7 @@ import { useCollectionBreakdowns, useCreateBreakdown, useCreateBreakdownPeriod, 
 import { useTeams, type Team, type Player } from '@/hooks/teams';
 import { usePlayers, useCreatePlayer } from '@/hooks/players';
 import { useTeamRosters } from '@/hooks/rosters';
-import type { ApiError } from '@/lib/api';
+import { apiFetch, type ApiError } from '@/lib/api';
 
 interface Props {
   initialVideoId: string | null;
@@ -892,6 +892,10 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
   const [homeRosterId, setHomeRosterId] = useState<string | null>(null);
   const [awayColor, setAwayColor] = useState('#000000');
   const [homeColor, setHomeColor] = useState('#ffffff');
+  const [awayDisplayName, setAwayDisplayName] = useState('');
+  const [awayDisplayAbbr, setAwayDisplayAbbr] = useState('');
+  const [homeDisplayName, setHomeDisplayName] = useState('');
+  const [homeDisplayAbbr, setHomeDisplayAbbr] = useState('');
   const [awayRoster, setAwayRoster] = useState<RosterEntry[]>([]);
   const [homeRoster, setHomeRoster] = useState<RosterEntry[]>([]);
   const [playersRoster, setPlayersRoster] = useState<RosterEntry[]>([]);
@@ -923,57 +927,58 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
     }
   }, [authLoading, user, router]);
 
-  // Clear roster + roster id when team selection changes
-  const awayTeamId = awayTeam?.id ?? null;
-  const homeTeamId = homeTeam?.id ?? null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setAwayRoster([]); setAwayRosterId(null); }, [awayTeamId]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setHomeRoster([]); setHomeRosterId(null); }, [homeTeamId]);
-
-  // Step 1: team picked — open roster picker
+  // Step 1: team picked — clear old data, open roster picker
   function handleTeamPicked(team: Team) {
     if (!teamModalSide) return;
+    // Clear existing roster state for this side before picking the new team
+    if (teamModalSide === 'away') {
+      setAwayRoster([]);
+      setAwayRosterId(null);
+      setAwayDisplayName('');
+      setAwayDisplayAbbr('');
+    } else {
+      setHomeRoster([]);
+      setHomeRosterId(null);
+      setHomeDisplayName('');
+      setHomeDisplayAbbr('');
+    }
     setTeamModalSide(null);
     setPendingTeamSelect({ team, side: teamModalSide });
   }
 
-  // Step 2: roster confirmed (or null = manual) — set team + pre-populate roster
+  // Step 2: roster confirmed (or null = manual) — fetch players first, then set all state
   async function handleRosterConfirm(rosterId: string | null) {
     if (!pendingTeamSelect) return;
     const { team, side } = pendingTeamSelect;
     setPendingTeamSelect(null);
 
+    let entries: RosterEntry[] = [];
+    if (rosterId) {
+      try {
+        const data = await apiFetch<{ data: { players?: { id: string; name: string; jersey_number: string | null }[] } }>(
+          `/teams/${team.id}/rosters/${rosterId}`,
+        );
+        entries = (data.data.players ?? []).map((p) => ({
+          kind: 'existing' as const,
+          playerId: p.id,
+          name: p.name,
+          jerseyNumber: p.jersey_number ?? '',
+        }));
+      } catch {
+        // Non-critical — roster fails to load, user adds players manually
+      }
+    }
+
     if (side === 'away') {
       setAwayTeam(team);
       setAwayColor(team.color ?? '#000000');
       setAwayRosterId(rosterId);
+      setAwayRoster(entries);
     } else {
       setHomeTeam(team);
       setHomeColor(team.color ?? '#ffffff');
       setHomeRosterId(rosterId);
-    }
-
-    if (rosterId) {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/teams/${team.id}/rosters/${rosterId}`,
-          { headers: { Accept: 'application/json' } },
-        );
-        if (res.ok) {
-          const json = await res.json() as { data: { players?: { id: string; name: string; jersey_number: string | null }[] } };
-          const entries: RosterEntry[] = (json.data.players ?? []).map((p) => ({
-            kind: 'existing' as const,
-            playerId: p.id,
-            name: p.name,
-            jerseyNumber: p.jersey_number ?? '',
-          }));
-          if (side === 'away') setAwayRoster(entries);
-          else setHomeRoster(entries);
-        }
-      } catch {
-        // Non-critical — roster fails to load, user adds players manually
-      }
+      setHomeRoster(entries);
     }
   }
 
@@ -1042,6 +1047,8 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
         ];
 
         const sideRosterIds: Record<'away' | 'home', string | null> = { away: awayRosterId, home: homeRosterId };
+        const sideDisplayNames: Record<'away' | 'home', string> = { away: awayDisplayName, home: homeDisplayName };
+        const sideDisplayAbbrs: Record<'away' | 'home', string> = { away: awayDisplayAbbr, home: homeDisplayAbbr };
 
         for (const [team, roster, side, color] of sides) {
           if (!team) continue;
@@ -1052,6 +1059,8 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
             home_away: side,
             color,
             roster_id: sideRosterIds[side],
+            name: sideDisplayNames[side].trim() || null,
+            abbreviation: sideDisplayAbbrs[side].trim() || null,
           });
 
           for (const entry of roster) {
@@ -1315,6 +1324,26 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                       <ColorPicker label="Jersey Color" value={awayColor} onChange={setAwayColor} />
                     )}
                     {awayTeam && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500">Display override <span className="font-normal">(this breakdown only)</span></p>
+                        <input
+                          type="text"
+                          value={awayDisplayName}
+                          onChange={(e) => setAwayDisplayName(e.target.value)}
+                          placeholder={awayTeam.name}
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+                        />
+                        <input
+                          type="text"
+                          value={awayDisplayAbbr}
+                          onChange={(e) => setAwayDisplayAbbr(e.target.value)}
+                          placeholder={awayTeam.abbreviation ?? 'Abbr.'}
+                          maxLength={20}
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+                        />
+                      </div>
+                    )}
+                    {awayTeam && (
                       <TeamRoster
                         roster={awayRoster}
                         onChange={setAwayRoster}
@@ -1330,6 +1359,26 @@ export function NewBreakdownContent({ initialVideoId }: Props) {
                     <TeamSlot side="home" selectedTeam={homeTeam} onSelect={() => setTeamModalSide('home')} />
                     {homeTeam && (
                       <ColorPicker label="Jersey Color" value={homeColor} onChange={setHomeColor} />
+                    )}
+                    {homeTeam && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500">Display override <span className="font-normal">(this breakdown only)</span></p>
+                        <input
+                          type="text"
+                          value={homeDisplayName}
+                          onChange={(e) => setHomeDisplayName(e.target.value)}
+                          placeholder={homeTeam.name}
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+                        />
+                        <input
+                          type="text"
+                          value={homeDisplayAbbr}
+                          onChange={(e) => setHomeDisplayAbbr(e.target.value)}
+                          placeholder={homeTeam.abbreviation ?? 'Abbr.'}
+                          maxLength={20}
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+                        />
+                      </div>
                     )}
                     {homeTeam && (
                       <TeamRoster

@@ -199,7 +199,7 @@ export function useCreateBreakdownPeriod() {
 
 export function useCreateBreakdownTeam() {
   const queryClient = useQueryClient();
-  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away'; color?: string; roster_id?: string | null }>({
+  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away'; color?: string; roster_id?: string | null; name?: string | null; abbreviation?: string | null }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams`, {
         method: 'POST',
