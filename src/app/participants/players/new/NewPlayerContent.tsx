@@ -17,6 +17,7 @@ export function NewPlayerContent() {
   const createPlayer = useCreatePlayer();
 
   const [name, setName] = useState('');
+  const [number, setNumber] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function NewPlayerContent() {
     e.preventDefault();
     setError('');
     createPlayer.mutate(
-      { name: name.trim() },
+      { name: name.trim(), number: number.trim() || null },
       {
         onSuccess: (player) => {
           router.push(`/participants/players/${player.id}`);
@@ -78,6 +79,20 @@ export function NewPlayerContent() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 placeholder="e.g. Jayson Tatum"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Jersey number
+              </label>
+              <input
+                type="text"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                maxLength={10}
+                placeholder="e.g. 23"
                 className={inputClass}
               />
             </div>

@@ -15,6 +15,11 @@ interface Props {
   id: string;
 }
 
+interface PlayerPayload {
+  name: string;
+  number: string | null;
+}
+
 export function EditPlayerContent({ id }: Props) {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -23,11 +28,12 @@ export function EditPlayerContent({ id }: Props) {
   const deletePlayer = useDeletePlayer();
 
   const [name, setName] = useState('');
+  const [number, setNumber] = useState('');
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // For update_own_breakdowns confirmation
-  const [pendingPayload, setPendingPayload] = useState<{ name: string } | null>(null);
+  // For update_own_breakdowns confirmation (only when name changes + player is in user's breakdowns)
+  const [pendingPayload, setPendingPayload] = useState<PlayerPayload | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
@@ -36,6 +42,7 @@ export function EditPlayerContent({ id }: Props) {
   useEffect(() => {
     if (player) {
       setName(player.name);
+      setNumber(player.number ?? '');
     }
   }, [player]);
 
@@ -63,17 +70,18 @@ export function EditPlayerContent({ id }: Props) {
     e.preventDefault();
     setError('');
     const trimmedName = name.trim();
+    const newNumber = number.trim() || null;
 
-    if (trimmedName !== player!.name) {
-      // Name changed — ask about snapshot update
-      setPendingPayload({ name: trimmedName });
+    if (trimmedName !== player!.name && (player!.my_breakdown_players_count ?? 0) > 0) {
+      // Name changed and player is in user's own breakdowns — ask about snapshot update
+      setPendingPayload({ name: trimmedName, number: newNumber });
       return;
     }
 
-    submitUpdate({ name: trimmedName }, false);
+    submitUpdate({ name: trimmedName, number: newNumber }, false);
   }
 
-  function submitUpdate(payload: { name: string }, updateOwnBreakdowns: boolean) {
+  function submitUpdate(payload: PlayerPayload, updateOwnBreakdowns: boolean) {
     setPendingPayload(null);
     updatePlayer.mutate(
       { ...payload, update_own_breakdowns: updateOwnBreakdowns },
@@ -164,6 +172,20 @@ export function EditPlayerContent({ id }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Jersey number
+              </label>
+              <input
+                type="text"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                maxLength={10}
+                placeholder="e.g. 23"
                 className={inputClass}
               />
             </div>

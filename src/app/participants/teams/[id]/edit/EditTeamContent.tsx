@@ -113,13 +113,13 @@ export function EditTeamContent({ id }: Props) {
     setError('');
     const payload = buildPayload();
 
-    if (snapshotFieldChanged(payload)) {
-      // Need to ask about update_own_breakdowns
+    if (snapshotFieldChanged(payload) && (team?.my_breakdown_teams_count ?? 0) > 0) {
+      // Team is in user's own breakdowns — ask about snapshot update
       setPendingPayload(payload);
       return;
     }
 
-    // No snapshot fields changed — submit directly
+    // No snapshot fields changed, or not in user's breakdowns — submit directly
     submitUpdate(payload, false);
   }
 

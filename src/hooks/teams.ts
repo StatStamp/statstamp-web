@@ -22,6 +22,7 @@ export interface Team {
   is_verified: boolean;
   leagues: League[];
   breakdown_teams_count?: number;
+  my_breakdown_teams_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +35,7 @@ export interface Player {
   is_reviewed: boolean;
   is_verified: boolean;
   breakdown_players_count?: number;
+  my_breakdown_players_count?: number;
   created_at: string;
   updated_at: string;
 }
