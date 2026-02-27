@@ -1,5 +1,5 @@
-import { NewPlayerContent } from './NewPlayerContent';
+import { redirect } from 'next/navigation';
 
 export default function NewPlayerPage() {
-  return <NewPlayerContent />;
+  redirect('/participants/players/new');
 }

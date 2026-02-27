@@ -1,15 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError } from '@/lib/api';
 
+export interface League {
+  id: number;
+  name: string;
+  abbreviation: string | null;
+}
+
 export interface Team {
   id: string;
   created_by_user_id: string;
   name: string;
-  league_name: string | null;
   abbreviation: string | null;
   color: string | null;
-  is_public: boolean;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  level: 'youth' | 'high_school' | 'college' | 'pro' | 'other' | null;
+  sport: string | null;
+  is_reviewed: boolean;
+  is_verified: boolean;
+  leagues: League[];
   breakdown_teams_count?: number;
+  my_breakdown_teams_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -19,8 +32,10 @@ export interface Player {
   created_by_user_id: string;
   name: string;
   number: string | null;
-  is_public: boolean;
-  default_teams?: { id: string; name: string }[];
+  is_reviewed: boolean;
+  is_verified: boolean;
+  breakdown_players_count?: number;
+  my_breakdown_players_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -29,10 +44,14 @@ interface PaginatedResponse<T> {
   data: T[];
 }
 
-export function useTeams(search?: string, options?: { enabled?: boolean }) {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+export function useTeams(search?: string, options?: { enabled?: boolean; mine?: boolean }) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (options?.mine) params.set('mine', '1');
+  const qs = params.toString() ? `?${params}` : '';
+
   return useQuery<Team[]>({
-    queryKey: ['teams', search ?? ''],
+    queryKey: ['teams', options?.mine ? 'mine' : 'all', search ?? ''],
     queryFn: async () => {
       const res = await apiFetch<PaginatedResponse<Team>>(`/teams${qs}`);
       return res.data;
@@ -42,16 +61,7 @@ export function useTeams(search?: string, options?: { enabled?: boolean }) {
 }
 
 export function useMyTeams(search: string, enabled = true) {
-  return useQuery<Team[]>({
-    queryKey: ['teams', 'mine', search],
-    queryFn: async () => {
-      const params = new URLSearchParams({ mine: '1' });
-      if (search) params.set('search', search);
-      const res = await apiFetch<PaginatedResponse<Team>>(`/teams?${params}`);
-      return res.data;
-    },
-    enabled,
-  });
+  return useTeams(search, { enabled, mine: true });
 }
 
 export function useTeam(id: string | null) {
@@ -67,7 +77,16 @@ export function useTeam(id: string | null) {
 
 export function useCreateTeam() {
   const queryClient = useQueryClient();
-  return useMutation<Team, ApiError, { name: string; league_name?: string | null; abbreviation?: string | null; color?: string | null; is_public?: boolean }>({
+  return useMutation<Team, ApiError, {
+    name: string;
+    abbreviation?: string | null;
+    color?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    level?: 'youth' | 'high_school' | 'college' | 'pro' | 'other' | null;
+    sport?: string | null;
+  }>({
     mutationFn: (data) =>
       apiFetch<{ data: Team }>('/teams', { method: 'POST', body: data }).then((r) => r.data),
     onSuccess: () => {
@@ -78,7 +97,17 @@ export function useCreateTeam() {
 
 export function useUpdateTeam(id: string) {
   const queryClient = useQueryClient();
-  return useMutation<Team, ApiError, { name?: string; league_name?: string | null; abbreviation?: string | null; color?: string | null; is_public?: boolean }>({
+  return useMutation<Team, ApiError, {
+    name?: string;
+    abbreviation?: string | null;
+    color?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+    level?: 'youth' | 'high_school' | 'college' | 'pro' | 'other' | null;
+    sport?: string | null;
+    update_own_breakdowns?: boolean;
+  }>({
     mutationFn: (data) =>
       apiFetch<{ data: Team }>(`/teams/${id}`, { method: 'PATCH', body: data }).then((r) => r.data),
     onSuccess: () => {
@@ -98,27 +127,28 @@ export function useDeleteTeam() {
   });
 }
 
-export function useTeamDefaultPlayers(teamId: string | null) {
+// ---------------------------------------------------------------------------
+// Deprecated stubs — /teams/{id}/default-players removed in API PR #39.
+// Replaced by roster system. Kept here to avoid breaking NewBreakdownContent
+// until Ticket 6 rewrites that flow.
+// ---------------------------------------------------------------------------
+
+export function useTeamDefaultPlayers(_teamId: string | null) {
   return useQuery<Player[]>({
-    queryKey: ['teams', teamId, 'default-players'],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: Player[] }>(`/teams/${teamId}/default-players`);
-      return res.data;
-    },
-    enabled: teamId !== null,
+    queryKey: ['teams', _teamId, 'default-players'],
+    queryFn: async () => [],
+    enabled: false,
   });
 }
 
 export function useAttachTeamDefaultPlayer() {
   return useMutation<void, ApiError, { teamId: string; player_id: string }>({
-    mutationFn: ({ teamId, player_id }) =>
-      apiFetch(`/teams/${teamId}/default-players`, { method: 'POST', body: { player_id } }).then(() => undefined),
+    mutationFn: async () => {},
   });
 }
 
 export function useDetachTeamDefaultPlayer() {
   return useMutation<void, ApiError, { teamId: string; playerId: string }>({
-    mutationFn: ({ teamId, playerId }) =>
-      apiFetch(`/teams/${teamId}/default-players/${playerId}`, { method: 'DELETE' }).then(() => undefined),
+    mutationFn: async () => {},
   });
 }

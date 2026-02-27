@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { EditTeamContent } from './EditTeamContent';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -6,5 +6,5 @@ interface PageProps {
 
 export default async function EditTeamPage({ params }: PageProps) {
   const { id } = await params;
-  redirect(`/participants/teams/${id}/edit`);
+  return <EditTeamContent id={id} />;
 }

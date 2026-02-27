@@ -1,5 +1,5 @@
-import { TeamsContent } from './TeamsContent';
+import { redirect } from 'next/navigation';
 
 export default function TeamsPage() {
-  return <TeamsContent />;
+  redirect('/participants');
 }
