@@ -33,9 +33,9 @@ export interface BreakdownTeam {
   id: string;
   breakdown_id: string;
   team_id: string;
+  roster_id?: string | null;
   team_name?: string | null;
   team_abbreviation?: string | null;
-  team_league_name?: string | null;
   home_away: 'home' | 'away' | null;
   color: string;
   created_at: string;
@@ -199,7 +199,7 @@ export function useCreateBreakdownPeriod() {
 
 export function useCreateBreakdownTeam() {
   const queryClient = useQueryClient();
-  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away'; color?: string }>({
+  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; team_id: string; home_away: 'home' | 'away'; color?: string; roster_id?: string | null; name?: string | null; abbreviation?: string | null }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams`, {
         method: 'POST',
@@ -213,7 +213,7 @@ export function useCreateBreakdownTeam() {
 
 export function useCreateBreakdownPlayer() {
   const queryClient = useQueryClient();
-  return useMutation<BreakdownPlayer, ApiError, { breakdownId: string; player_id: string; breakdown_team_id: string | null; jersey_number: string | null }>({
+  return useMutation<BreakdownPlayer, ApiError, { breakdownId: string; player_id: string; breakdown_team_id: string | null; jersey_number: string | null; name?: string | null }>({
     mutationFn: ({ breakdownId, ...data }) =>
       apiFetch<{ data: BreakdownPlayer }>(`/breakdowns/${breakdownId}/players`, {
         method: 'POST',
@@ -301,7 +301,7 @@ export function useDeleteBreakdownPeriod() {
 
 export function useUpdateBreakdownTeam() {
   const queryClient = useQueryClient();
-  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; teamId: string; team_id?: string; home_away?: 'home' | 'away' | null; color?: string }>({
+  return useMutation<BreakdownTeam, ApiError, { breakdownId: string; teamId: string; team_id?: string; home_away?: 'home' | 'away' | null; color?: string; name?: string | null; abbreviation?: string | null }>({
     mutationFn: ({ breakdownId, teamId, ...data }) =>
       apiFetch<{ data: BreakdownTeam }>(`/breakdowns/${breakdownId}/teams/${teamId}`, {
         method: 'PATCH',
@@ -309,6 +309,20 @@ export function useUpdateBreakdownTeam() {
       }).then((r) => r.data),
     onSuccess: (_, { breakdownId }) => {
       queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'teams'] });
+    },
+  });
+}
+
+export function useUpdateBreakdownPlayer() {
+  const queryClient = useQueryClient();
+  return useMutation<BreakdownPlayer, ApiError, { breakdownId: string; playerId: string; jersey_number?: string | null; name?: string | null; breakdown_team_id?: string | null }>({
+    mutationFn: ({ breakdownId, playerId, ...data }) =>
+      apiFetch<{ data: BreakdownPlayer }>(`/breakdowns/${breakdownId}/players/${playerId}`, {
+        method: 'PATCH',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'players'] });
     },
   });
 }

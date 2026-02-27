@@ -14,6 +14,7 @@ import {
   useBreakdownPeriods,
   useUpdateBreakdown,
   useUpdateBreakdownTeam,
+  useUpdateBreakdownPlayer,
   useUpdateBreakdownPeriod,
   useCreateBreakdownPeriod,
   useDeleteBreakdownPeriod,
@@ -27,6 +28,7 @@ import {
 } from '@/hooks/breakdowns';
 import { useTeams, type Team, type Player } from '@/hooks/teams';
 import { usePlayers, useCreatePlayer } from '@/hooks/players';
+import { useTeamRosters, useRoster } from '@/hooks/rosters';
 import { apiFetch, type ApiError } from '@/lib/api';
 
 interface Props {
@@ -207,7 +209,7 @@ function PlayerSearchPanel({
   userId,
 }: {
   onSelectExisting: (player: Player) => void;
-  onCreateNew: () => void;
+  onCreateNew: (searchTerm: string) => void;
   onClose: () => void;
   existingPlayerIds: Set<string>;
   userId: string | undefined;
@@ -236,18 +238,12 @@ function PlayerSearchPanel({
           type="text"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search players…"
+          placeholder="Player name"
           autoFocus
           className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
         />
       </div>
       <div className="max-h-52 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
-        <button onClick={onCreateNew} className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-zinc-400">
-            <path d="M6 1v10M1 6h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
-          </svg>
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Create New Player</span>
-        </button>
         {isFetching && !players.length ? (
           <p className="px-3 py-3 text-sm text-zinc-400 dark:text-zinc-500 text-center">Searching…</p>
         ) : sortedPlayers.length === 0 ? (
@@ -263,8 +259,13 @@ function PlayerSearchPanel({
           ))
         )}
       </div>
-      <div className="px-3 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="px-3 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between gap-3">
         <button onClick={onClose} className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">Cancel</button>
+        {searchInput.trim().length > 0 && (
+          <button onClick={() => onCreateNew(searchInput.trim())} className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors">
+            Create <span className="font-medium">"{searchInput.trim()}"</span> as new player
+          </button>
+        )}
       </div>
     </div>
   );
@@ -290,10 +291,15 @@ function EditTeamRoster({
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [editJerseyValue, setEditJerseyValue] = useState('');
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
 
   const createPlayer = useCreatePlayer();
   const createBreakdownPlayer = useCreateBreakdownPlayer();
   const deleteBreakdownPlayer = useDeleteBreakdownPlayer();
+  const updateBreakdownPlayer = useUpdateBreakdownPlayer();
 
   const existingPlayerIds = useMemo(
     () => new Set(players.map((p) => p.player_id)),
@@ -315,10 +321,10 @@ function EditTeamRoster({
     }
   }
 
-  function handleCreateNew() {
+  function handleCreateNew(prefill = '') {
     setSearchOpen(false);
     setIsCreatingNew(true);
-    setNewPlayerName('');
+    setNewPlayerName(prefill);
     setNewPlayerJersey('');
   }
 
@@ -368,24 +374,93 @@ function EditTeamRoster({
         {players.length > 0 && (
           <div className="space-y-2 mb-3">
             {players.map((p) => (
-              <div key={p.id} className="flex items-center gap-2">
-                <span className="flex-1 min-w-0 text-sm text-zinc-900 dark:text-zinc-100 truncate">
-                  {p.player_name ?? p.player_id}
-                </span>
-                {p.jersey_number && (
-                  <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono tabular-nums shrink-0">
-                    #{p.jersey_number}
-                  </span>
+              <div key={p.id}>
+                {editingPlayerId === p.id ? (
+                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editNameValue}
+                        onChange={(e) => setEditNameValue(e.target.value)}
+                        placeholder="Player name"
+                        autoFocus
+                        className="flex-1 min-w-0 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+                      />
+                      <input
+                        type="text"
+                        value={editJerseyValue}
+                        onChange={(e) => setEditJerseyValue(e.target.value)}
+                        placeholder="#"
+                        maxLength={10}
+                        className="w-14 shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm text-center text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition-colors"
+                      />
+                    </div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500">Changes only affect this breakdown.</p>
+                    {editSaveError && <p className="text-xs text-red-500">{editSaveError}</p>}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          setEditSaveError(null);
+                          try {
+                            await updateBreakdownPlayer.mutateAsync({
+                              breakdownId,
+                              playerId: p.id,
+                              name: editNameValue.trim() || null,
+                              jersey_number: editJerseyValue.trim() || null,
+                            });
+                            setEditingPlayerId(null);
+                          } catch (e: unknown) {
+                            setEditSaveError((e as ApiError)?.message ?? 'Failed to save.');
+                          }
+                        }}
+                        disabled={updateBreakdownPlayer.isPending}
+                        className="rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-3 py-1.5 text-xs font-medium disabled:opacity-40 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors"
+                      >
+                        {updateBreakdownPlayer.isPending ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => setEditingPlayerId(null)}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 min-w-0 text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                      {p.player_name ?? p.player_id}
+                    </span>
+                    {p.jersey_number && (
+                      <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono tabular-nums shrink-0">
+                        #{p.jersey_number}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => {
+                        setEditingPlayerId(p.id);
+                        setEditNameValue(p.player_name ?? '');
+                        setEditJerseyValue(p.jersey_number ?? '');
+                        setEditSaveError(null);
+                      }}
+                      title="Edit display name / jersey"
+                      className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" fill="none" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPendingRemoveId(p.id)}
+                      title="Remove player"
+                      className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 7h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
-                <button
-                  onClick={() => setPendingRemoveId(p.id)}
-                  title="Remove player"
-                  className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2 7h10" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
-                  </svg>
-                </button>
               </div>
             ))}
           </div>
@@ -642,6 +717,119 @@ function TeamSelectModal({
 }
 
 // ---------------------------------------------------------------------------
+// Roster picker modal — shown after team is picked, before finalising
+// ---------------------------------------------------------------------------
+
+function RosterPlayerList({ teamId, rosterId }: { teamId: string; rosterId: string }) {
+  const { data: roster, isLoading } = useRoster(teamId, rosterId);
+  const players = roster?.players ?? [];
+  const MAX = 20;
+  const shown = players.slice(0, MAX);
+  const overflow = players.length - MAX;
+
+  if (isLoading) {
+    return <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5 italic">Loading players…</p>;
+  }
+  if (shown.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-2 w-full">
+      {shown.map((p) => (
+        <span key={p.id} className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+          {p.name}{p.jersey_number ? <span className="text-zinc-400 dark:text-zinc-500"> #{p.jersey_number}</span> : null}
+        </span>
+      ))}
+      {overflow > 0 && (
+        <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">+{overflow} more</span>
+      )}
+    </div>
+  );
+}
+
+function RosterPickerModal({
+  teamId,
+  teamName,
+  onConfirm,
+  onClose,
+}: {
+  teamId: string;
+  teamName: string;
+  onConfirm: (rosterId: string | null) => void;
+  onClose: () => void;
+}) {
+  const { data: rosters = [], isLoading } = useTeamRosters(teamId);
+
+  function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleBackdrop}>
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
+          <div>
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Select Roster</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">{teamName}</p>
+          </div>
+          <button onClick={onClose} className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 3l10 10M13 3L3 13" strokeWidth="1.5" strokeLinecap="round" className="stroke-current" />
+            </svg>
+          </button>
+        </div>
+        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {isLoading ? (
+            <p className="px-6 py-6 text-sm text-zinc-400 dark:text-zinc-500 text-center">Loading rosters…</p>
+          ) : rosters.length === 0 ? (
+            <p className="px-6 py-6 text-sm text-zinc-400 dark:text-zinc-500 text-center">No rosters for this team.</p>
+          ) : (
+            rosters.map((roster) => (
+              <button
+                key={roster.id}
+                onClick={() => onConfirm(roster.id)}
+                className="w-full flex flex-col px-6 py-3.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  {roster.is_verified && (
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                      Verified
+                    </span>
+                  )}
+                  {!roster.is_verified && roster.is_reviewed && (
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                      Reviewed
+                    </span>
+                  )}
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                    {roster.season}{roster.name ? ` — ${roster.name}` : ''}
+                  </span>
+                </div>
+                {(roster.breakdown_teams_count ?? 0) > 0 && (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">Used in {roster.breakdown_teams_count} breakdowns</span>
+                )}
+                <RosterPlayerList teamId={teamId} rosterId={roster.id} />
+              </button>
+            ))
+          )}
+          <button
+            onClick={() => onConfirm(null)}
+            className="w-full px-6 py-3.5 text-left text-sm text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+          >
+            Add players manually
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Period row (edit mode — saves on blur)
 // ---------------------------------------------------------------------------
 
@@ -783,9 +971,18 @@ export function EditBreakdownContent({ id }: Props) {
   // Modal state
   const [infoModalId, setInfoModalId] = useState<string | null>(null);
   const [teamModalSide, setTeamModalSide] = useState<'away' | 'home' | null>(null);
+  const [pendingTeamSelect, setPendingTeamSelect] = useState<{ team: Team; side: 'away' | 'home' } | null>(null);
   const [confirmDeleteBreakdown, setConfirmDeleteBreakdown] = useState(false);
   const [confirmRemoveTeamId, setConfirmRemoveTeamId] = useState<string | null>(null);
   const [confirmSwitchToMatchup, setConfirmSwitchToMatchup] = useState(false);
+
+  // Team display overrides (name + abbreviation per slot)
+  const [awayDisplayName, setAwayDisplayName] = useState('');
+  const [awayDisplayAbbr, setAwayDisplayAbbr] = useState('');
+  const [homeDisplayName, setHomeDisplayName] = useState('');
+  const [homeDisplayAbbr, setHomeDisplayAbbr] = useState('');
+  const awayDisplayInit = useRef(false);
+  const homeDisplayInit = useRef(false);
 
   // Mutations
   const updateBreakdown = useUpdateBreakdown();
@@ -874,7 +1071,7 @@ export function EditBreakdownContent({ id }: Props) {
       id: bt.team_id,
       created_by_user_id: '',
       name: bt.team_name ?? bt.team_id,
-      leagues: bt.team_league_name ? [{ id: 0, name: bt.team_league_name, abbreviation: null }] : [],
+      leagues: [],
       abbreviation: bt.team_abbreviation ?? null,
       color: null,
       city: null,
@@ -900,14 +1097,43 @@ export function EditBreakdownContent({ id }: Props) {
     if (homeTeamRecord?.color) setHomeColor(homeTeamRecord.color);
   }, [homeTeamRecord?.id, homeTeamRecord?.color]);
 
-  async function handleTeamSelect(team: Team) {
+  // Sync team display override fields from server (once per team slot)
+  useEffect(() => {
+    if (awayTeamRecord && !awayDisplayInit.current) {
+      awayDisplayInit.current = true;
+      setAwayDisplayName(awayTeamRecord.team_name ?? '');
+      setAwayDisplayAbbr(awayTeamRecord.team_abbreviation ?? '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awayTeamRecord?.id]);
+
+  useEffect(() => {
+    if (homeTeamRecord && !homeDisplayInit.current) {
+      homeDisplayInit.current = true;
+      setHomeDisplayName(homeTeamRecord.team_name ?? '');
+      setHomeDisplayAbbr(homeTeamRecord.team_abbreviation ?? '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeTeamRecord?.id]);
+
+  // Step 1: team picked in TeamSelectModal — open roster picker
+  function handleTeamPicked(team: Team) {
     if (!teamModalSide) return;
-    const existingRecord = teamModalSide === 'away' ? awayTeamRecord : homeTeamRecord;
+    setTeamModalSide(null);
+    setPendingTeamSelect({ team, side: teamModalSide });
+  }
+
+  // Step 2: roster confirmed (or null = manual) — create/update breakdown_team + populate players
+  async function handleRosterConfirm(rosterId: string | null) {
+    if (!pendingTeamSelect) return;
+    const { team, side } = pendingTeamSelect;
+    setPendingTeamSelect(null);
+
+    const existingRecord = side === 'away' ? awayTeamRecord : homeTeamRecord;
     const teamColor = team.color ?? '#ffffff';
 
     let breakdownTeamId: string;
     if (existingRecord) {
-      // Delete players currently in this slot before swapping the team
       const slotPlayers = players.filter((p) => p.breakdown_team_id === existingRecord.id);
       for (const p of slotPlayers) {
         await deletePlayer.mutateAsync({ breakdownId: id, playerId: p.id });
@@ -915,26 +1141,32 @@ export function EditBreakdownContent({ id }: Props) {
       await updateTeam.mutateAsync({ breakdownId: id, teamId: existingRecord.id, team_id: team.id, color: teamColor });
       breakdownTeamId = existingRecord.id;
     } else {
-      const newBT = await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: teamModalSide, color: teamColor });
+      const newBT = await createTeam.mutateAsync({ breakdownId: id, team_id: team.id, home_away: side, color: teamColor, roster_id: rosterId });
       breakdownTeamId = newBT.id;
     }
-    if (teamModalSide === 'away') setAwayColor(teamColor);
-    else setHomeColor(teamColor);
-    setTeamModalSide(null);
 
-    // Auto-populate default players for the selected team
-    try {
-      const res = await apiFetch<{ data: { id: string; name: string; number: string | null }[] }>(`/teams/${team.id}/default-players`);
-      for (const player of res.data) {
-        await createBreakdownPlayer.mutateAsync({
-          breakdownId: id,
-          player_id: player.id,
-          breakdown_team_id: breakdownTeamId,
-          jersey_number: player.number ?? null,
-        });
+    if (side === 'away') {
+      setAwayColor(teamColor);
+      awayDisplayInit.current = false; // reset so sync effect reinitialises for new team
+    } else {
+      setHomeColor(teamColor);
+      homeDisplayInit.current = false;
+    }
+
+    if (rosterId) {
+      try {
+        const res = await apiFetch<{ data: { id: string; name: string | null; players?: { id: string; name: string; jersey_number: string | null }[] } }>(`/teams/${team.id}/rosters/${rosterId}`);
+        for (const player of res.data.players ?? []) {
+          await createBreakdownPlayer.mutateAsync({
+            breakdownId: id,
+            player_id: player.id,
+            breakdown_team_id: breakdownTeamId,
+            jersey_number: player.jersey_number,
+          });
+        }
+      } catch {
+        // Non-critical — silently skip if roster players can't be loaded
       }
-    } catch {
-      // Non-critical — silently skip if default players can't be loaded
     }
   }
 
@@ -1186,19 +1418,41 @@ export function EditBreakdownContent({ id }: Props) {
                     <div>
                       <TeamSlot side="away" selectedTeam={awayTeam} onSelect={() => setTeamModalSide('away')} />
                       {awayTeamRecord && (
-                        <div className="mt-2 flex items-center justify-between">
-                          <ColorPicker
-                            label="Jersey Color"
-                            value={awayColor}
-                            onChange={setAwayColor}
-                            onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: awayTeamRecord.id, color: awayColor })}
-                          />
-                          <button
-                            onClick={() => setConfirmRemoveTeamId(awayTeamRecord.id)}
-                            className="text-xs text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                          >
-                            Remove team
-                          </button>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <ColorPicker
+                              label="Jersey Color"
+                              value={awayColor}
+                              onChange={setAwayColor}
+                              onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: awayTeamRecord.id, color: awayColor })}
+                            />
+                            <button
+                              onClick={() => setConfirmRemoveTeamId(awayTeamRecord.id)}
+                              className="text-xs text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            >
+                              Remove team
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={awayDisplayName}
+                              onChange={(e) => setAwayDisplayName(e.target.value)}
+                              onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: awayTeamRecord.id, name: awayDisplayName.trim() || null })}
+                              placeholder={awayTeam?.name ?? 'Display name'}
+                              className="flex-1 min-w-0 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                            />
+                            <input
+                              type="text"
+                              value={awayDisplayAbbr}
+                              onChange={(e) => setAwayDisplayAbbr(e.target.value)}
+                              onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: awayTeamRecord.id, abbreviation: awayDisplayAbbr.trim() || null })}
+                              placeholder={awayTeam?.abbreviation ?? 'Abbr'}
+                              maxLength={10}
+                              className="w-16 shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-center text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                            />
+                          </div>
+                          <p className="text-xs text-zinc-400 dark:text-zinc-500">Name/abbreviation changes only affect this breakdown.</p>
                         </div>
                       )}
                     </div>
@@ -1219,19 +1473,41 @@ export function EditBreakdownContent({ id }: Props) {
                     <div>
                       <TeamSlot side="home" selectedTeam={homeTeam} onSelect={() => setTeamModalSide('home')} />
                       {homeTeamRecord && (
-                        <div className="mt-2 flex items-center justify-between">
-                          <ColorPicker
-                            label="Jersey Color"
-                            value={homeColor}
-                            onChange={setHomeColor}
-                            onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: homeTeamRecord.id, color: homeColor })}
-                          />
-                          <button
-                            onClick={() => setConfirmRemoveTeamId(homeTeamRecord.id)}
-                            className="text-xs text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                          >
-                            Remove team
-                          </button>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <ColorPicker
+                              label="Jersey Color"
+                              value={homeColor}
+                              onChange={setHomeColor}
+                              onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: homeTeamRecord.id, color: homeColor })}
+                            />
+                            <button
+                              onClick={() => setConfirmRemoveTeamId(homeTeamRecord.id)}
+                              className="text-xs text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            >
+                              Remove team
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={homeDisplayName}
+                              onChange={(e) => setHomeDisplayName(e.target.value)}
+                              onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: homeTeamRecord.id, name: homeDisplayName.trim() || null })}
+                              placeholder={homeTeam?.name ?? 'Display name'}
+                              className="flex-1 min-w-0 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                            />
+                            <input
+                              type="text"
+                              value={homeDisplayAbbr}
+                              onChange={(e) => setHomeDisplayAbbr(e.target.value)}
+                              onBlur={() => updateTeam.mutate({ breakdownId: id, teamId: homeTeamRecord.id, abbreviation: homeDisplayAbbr.trim() || null })}
+                              placeholder={homeTeam?.abbreviation ?? 'Abbr'}
+                              maxLength={10}
+                              className="w-16 shrink-0 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1 text-xs text-center text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 transition-colors"
+                            />
+                          </div>
+                          <p className="text-xs text-zinc-400 dark:text-zinc-500">Name/abbreviation changes only affect this breakdown.</p>
                         </div>
                       )}
                     </div>
@@ -1296,8 +1572,18 @@ export function EditBreakdownContent({ id }: Props) {
         <TeamSelectModal
           side={teamModalSide}
           videoTitle={video?.title ?? ''}
-          onSelect={handleTeamSelect}
+          onSelect={handleTeamPicked}
           onClose={() => setTeamModalSide(null)}
+        />
+      )}
+
+      {/* Roster picker modal (step 2 of team selection) */}
+      {pendingTeamSelect && (
+        <RosterPickerModal
+          teamId={pendingTeamSelect.team.id}
+          teamName={pendingTeamSelect.team.name}
+          onConfirm={handleRosterConfirm}
+          onClose={() => setPendingTeamSelect(null)}
         />
       )}
 

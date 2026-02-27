@@ -23,8 +23,24 @@ export interface Team {
   leagues: League[];
   breakdown_teams_count?: number;
   my_breakdown_teams_count?: number;
+  created_by?: { id: string; name: string } | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PlayerRoster {
+  id: string;
+  season: string;
+  name: string | null;
+  is_reviewed: boolean;
+  is_verified: boolean;
+  jersey_number: string | null;
+  team: {
+    id: string;
+    name: string;
+    abbreviation: string | null;
+    is_verified: boolean;
+  } | null;
 }
 
 export interface Player {
@@ -36,6 +52,8 @@ export interface Player {
   is_verified: boolean;
   breakdown_players_count?: number;
   my_breakdown_players_count?: number;
+  created_by?: { id: string; name: string } | null;
+  rosters?: PlayerRoster[];
   created_at: string;
   updated_at: string;
 }

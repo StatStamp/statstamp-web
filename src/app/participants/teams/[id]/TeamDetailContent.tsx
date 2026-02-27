@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/hooks/teams';
+import { useTeamRosters, type Roster } from '@/hooks/rosters';
 
 const LEVEL_LABELS: Record<string, string> = {
   youth: 'Youth',
@@ -13,6 +14,41 @@ const LEVEL_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
+function RosterRow({ roster }: { roster: Roster }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3 gap-4">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            {roster.name ?? roster.season}
+          </span>
+          {roster.name && (
+            <span className="text-sm text-zinc-500 dark:text-zinc-400">{roster.season}</span>
+          )}
+          {roster.is_verified && (
+            <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
+              Verified
+            </span>
+          )}
+          {!roster.is_verified && roster.is_reviewed && (
+            <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Reviewed
+            </span>
+          )}
+        </div>
+        {roster.user && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">by {roster.user.name}</p>
+        )}
+      </div>
+      <div className="shrink-0 text-right">
+        {roster.players_count !== undefined && (
+          <span className="text-sm text-zinc-500 dark:text-zinc-400">{roster.players_count} players</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   id: string;
 }
@@ -20,8 +56,11 @@ interface Props {
 export function TeamDetailContent({ id }: Props) {
   const { user } = useAuth();
   const { data: team, isLoading, isError } = useTeam(id);
+  const { data: rosters } = useTeamRosters(id);
 
   const canEdit = user && team && user.id === team.created_by_user_id && !team.is_verified;
+  const verifiedRosters = rosters?.filter((r) => r.is_verified) ?? [];
+  const otherRosters = rosters?.filter((r) => !r.is_verified) ?? [];
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -50,7 +89,7 @@ export function TeamDetailContent({ id }: Props) {
 
           {team && (
             <>
-              <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="flex items-start justify-between gap-4 mb-2">
                 <div className="flex items-center gap-3">
                   {team.color && (
                     <span
@@ -62,7 +101,7 @@ export function TeamDetailContent({ id }: Props) {
                     <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{team.name}</h1>
                     {team.is_verified && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400 mt-1">
-                        ✓ Verified by StatStamp
+                        Verified by StatStamp
                       </span>
                     )}
                   </div>
@@ -76,6 +115,36 @@ export function TeamDetailContent({ id }: Props) {
                   </Link>
                 )}
               </div>
+
+              {team.created_by && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6">
+                  Added by {team.created_by.name}
+                </p>
+              )}
+
+              {/* Verified rosters spotlight */}
+              {verifiedRosters.length > 0 && (
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-4 py-3 mb-6">
+                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-3">Official Rosters</p>
+                  <div className="space-y-2">
+                    {verifiedRosters.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            {r.name ?? r.season}
+                          </span>
+                          {r.name && (
+                            <span className="text-sm text-zinc-500 dark:text-zinc-400 ml-2">{r.season}</span>
+                          )}
+                        </div>
+                        {r.players_count !== undefined && (
+                          <span className="text-xs text-zinc-500 dark:text-zinc-400">{r.players_count} players</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <dl className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800 mb-6">
                 {team.abbreviation && (
@@ -132,6 +201,20 @@ export function TeamDetailContent({ id }: Props) {
                   </div>
                 )}
               </dl>
+
+              {/* All rosters */}
+              {rosters && rosters.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
+                    All Rosters
+                    <span className="ml-2 font-normal text-zinc-400 dark:text-zinc-500">({rosters.length})</span>
+                  </h2>
+                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {verifiedRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
+                    {otherRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
