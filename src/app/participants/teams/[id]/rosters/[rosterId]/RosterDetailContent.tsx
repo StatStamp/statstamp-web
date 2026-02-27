@@ -15,7 +15,7 @@ import {
   type Roster,
   type RosterPlayer,
 } from '@/hooks/rosters';
-import { usePlayers } from '@/hooks/players';
+import { usePlayers, useCreatePlayer } from '@/hooks/players';
 import type { Player } from '@/hooks/teams';
 
 const inputClass =
@@ -133,26 +133,49 @@ function AddPlayerForm({
   const [showDropdown, setShowDropdown] = useState(false);
   const [selected, setSelected] = useState<Player | null>(null);
   const [jersey, setJersey] = useState('');
+  // create-mode state
+  const [createMode, setCreateMode] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createJersey, setCreateJersey] = useState('');
+
   const addPlayer = useAddRosterPlayer(teamId, rosterId);
+  const createPlayer = useCreatePlayer();
   const searchRef = useRef<HTMLInputElement>(null);
   const jerseyRef = useRef<HTMLInputElement>(null);
+  const createNameRef = useRef<HTMLInputElement>(null);
 
   const { data: searchResults } = usePlayers(search, { enabled: search.length >= 2 });
 
   useEffect(() => {
-    if (selected) {
+    if (createMode) {
+      createNameRef.current?.focus();
+    } else if (selected) {
       jerseyRef.current?.focus();
     } else {
       searchRef.current?.focus();
     }
-  }, [selected]);
+  }, [createMode, selected]);
 
   function handleSelect(player: Player) {
     setSelected(player);
+    setJersey(player.number ?? '');
     setShowDropdown(false);
   }
 
-  function handleSubmit(e: React.SyntheticEvent) {
+  function enterCreateMode() {
+    setCreateMode(true);
+    setCreateName(search);
+    setCreateJersey('');
+    setShowDropdown(false);
+  }
+
+  function exitCreateMode() {
+    setCreateMode(false);
+    setCreateName('');
+    setCreateJersey('');
+  }
+
+  function handleAddExisting(e: React.SyntheticEvent) {
     e.preventDefault();
     if (!selected) return;
     addPlayer.mutate(
@@ -167,8 +190,82 @@ function AddPlayerForm({
     );
   }
 
+  function handleCreateAndAdd(e: React.SyntheticEvent) {
+    e.preventDefault();
+    if (!createName.trim()) return;
+    const jerseyVal = createJersey.trim() || null;
+    createPlayer.mutate(
+      { name: createName.trim(), number: jerseyVal },
+      {
+        onSuccess: (newPlayer) => {
+          addPlayer.mutate(
+            { player_id: newPlayer.id, jersey_number: jerseyVal },
+            {
+              onSuccess: () => {
+                exitCreateMode();
+                setSearch('');
+              },
+            },
+          );
+        },
+      },
+    );
+  }
+
+  const isPending = addPlayer.isPending || createPlayer.isPending;
+  const isError = addPlayer.isError || createPlayer.isError;
+
+  // ── Create mode ──
+  if (createMode) {
+    return (
+      <form onSubmit={handleCreateAndAdd} className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">New player</span>
+          <button
+            type="button"
+            onClick={exitCreateMode}
+            disabled={isPending}
+            className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+          >
+            ← Back to search
+          </button>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <input
+            ref={createNameRef}
+            type="text"
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            required
+            placeholder="Player name"
+            className="flex-1 min-w-0 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition"
+          />
+          <input
+            type="text"
+            value={createJersey}
+            onChange={(e) => setCreateJersey(e.target.value)}
+            placeholder="Jersey # (optional)"
+            maxLength={10}
+            className="w-36 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition"
+          />
+          <button
+            type="submit"
+            disabled={isPending || !createName.trim()}
+            className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors shrink-0"
+          >
+            {isPending ? 'Creating…' : 'Create & add'}
+          </button>
+        </div>
+        {isError && (
+          <p className="text-xs text-red-600 dark:text-red-400">Something went wrong. Please try again.</p>
+        )}
+      </form>
+    );
+  }
+
+  // ── Search / selected mode ──
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleAddExisting}>
       {!selected ? (
         <div className="relative">
           <input
@@ -184,31 +281,46 @@ function AddPlayerForm({
             placeholder="Search players by name…"
             className={inputClass}
           />
-          {showDropdown && searchResults && searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-lg max-h-48 overflow-y-auto">
-              {searchResults.slice(0, 10).map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onMouseDown={() => handleSelect(p)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-between gap-2"
-                >
-                  <span className="text-zinc-900 dark:text-zinc-100">{p.name}</span>
-                  <span className="flex items-center gap-2 shrink-0">
-                    {p.number && (
-                      <span className="text-xs font-mono text-zinc-400 dark:text-zinc-500">#{p.number}</span>
-                    )}
-                    {existingPlayerIds.has(p.id) && (
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">on roster</span>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-          {showDropdown && search.length >= 2 && searchResults && searchResults.length === 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-lg px-3 py-2">
-              <p className="text-sm text-zinc-400 dark:text-zinc-600">No players found.</p>
+          {showDropdown && search.length >= 2 && (
+            <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-lg max-h-56 overflow-y-auto">
+              {searchResults && searchResults.length > 0 && (
+                <>
+                  {searchResults.slice(0, 10).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onMouseDown={() => handleSelect(p)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-between gap-2"
+                    >
+                      <span className="text-zinc-900 dark:text-zinc-100">{p.name}</span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        {p.number && (
+                          <span className="text-xs font-mono text-zinc-400 dark:text-zinc-500">#{p.number}</span>
+                        )}
+                        {existingPlayerIds.has(p.id) && (
+                          <span className="text-xs text-zinc-400 dark:text-zinc-500">on roster</span>
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                  <div className="border-t border-zinc-100 dark:border-zinc-800" />
+                </>
+              )}
+              {searchResults && searchResults.length === 0 && (
+                <p className="px-3 py-2 text-sm text-zinc-400 dark:text-zinc-600">No players found.</p>
+              )}
+              <button
+                type="button"
+                onMouseDown={enterCreateMode}
+                className="w-full text-left px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-1.5"
+              >
+                <span className="text-zinc-400">+</span>
+                Create
+                {search.trim() && (
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">&ldquo;{search.trim()}&rdquo;</span>
+                )}
+                as new player
+              </button>
             </div>
           )}
         </div>
@@ -219,7 +331,7 @@ function AddPlayerForm({
           </span>
           <button
             type="button"
-            onClick={() => { setSelected(null); setSearch(''); }}
+            onClick={() => { setSelected(null); setSearch(''); setJersey(''); }}
             className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors shrink-0"
           >
             Change
