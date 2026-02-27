@@ -1,10 +1,11 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/hooks/teams';
-import { useTeamRosters, type Roster } from '@/hooks/rosters';
+import { useTeamRosters, useCreateRoster, type Roster } from '@/hooks/rosters';
 
 const LEVEL_LABELS: Record<string, string> = {
   youth: 'Youth',
@@ -13,6 +14,94 @@ const LEVEL_LABELS: Record<string, string> = {
   pro: 'Pro',
   other: 'Other',
 };
+
+const inputClass =
+  'w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 transition';
+
+function CreateRosterModal({ teamId, onClose }: { teamId: string; onClose: () => void }) {
+  const [season, setSeason] = useState('');
+  const [name, setName] = useState('');
+  const createRoster = useCreateRoster(teamId);
+  const seasonRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    seasonRef.current?.focus();
+  }, []);
+
+  function handleSubmit(e: React.SyntheticEvent) {
+    e.preventDefault();
+    if (!season.trim()) return;
+    createRoster.mutate(
+      { season: season.trim(), name: name.trim() || null },
+      { onSuccess: () => onClose() },
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm mx-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-5">Add roster</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Season <span className="text-red-500">*</span>
+            </label>
+            <input
+              ref={seasonRef}
+              type="text"
+              value={season}
+              onChange={(e) => setSeason(e.target.value)}
+              required
+              maxLength={20}
+              placeholder="e.g. 2025-26"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Name <span className="text-zinc-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Varsity"
+              className={inputClass}
+            />
+          </div>
+
+          {createRoster.isError && (
+            <p className="text-xs text-red-600 dark:text-red-400">Something went wrong. Please try again.</p>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={createRoster.isPending}
+              className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createRoster.isPending || !season.trim()}
+              className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 transition-colors"
+            >
+              {createRoster.isPending ? 'Creating…' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function RosterRow({ roster }: { roster: Roster }) {
   return (
@@ -40,10 +129,11 @@ function RosterRow({ roster }: { roster: Roster }) {
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">by {roster.user.name}</p>
         )}
       </div>
-      <div className="shrink-0 text-right">
+      <div className="shrink-0 flex items-center gap-2">
         {roster.players_count !== undefined && (
           <span className="text-sm text-zinc-500 dark:text-zinc-400">{roster.players_count} players</span>
         )}
+        <span className="text-zinc-300 dark:text-zinc-600">›</span>
       </div>
     </div>
   );
@@ -57,6 +147,7 @@ export function TeamDetailContent({ id }: Props) {
   const { user } = useAuth();
   const { data: team, isLoading, isError } = useTeam(id);
   const { data: rosters } = useTeamRosters(id);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const canEdit = user && team && user.id === team.created_by_user_id && !team.is_verified;
   const verifiedRosters = rosters?.filter((r) => r.is_verified) ?? [];
@@ -128,7 +219,11 @@ export function TeamDetailContent({ id }: Props) {
                   <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-3">Official Rosters</p>
                   <div className="space-y-2">
                     {verifiedRosters.map((r) => (
-                      <div key={r.id} className="flex items-center justify-between">
+                      <Link
+                        key={r.id}
+                        href={`/participants/teams/${id}/rosters/${r.id}`}
+                        className="flex items-center justify-between hover:opacity-75 transition-opacity"
+                      >
                         <div>
                           <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                             {r.name ?? r.season}
@@ -140,7 +235,7 @@ export function TeamDetailContent({ id }: Props) {
                         {r.players_count !== undefined && (
                           <span className="text-xs text-zinc-500 dark:text-zinc-400">{r.players_count} players</span>
                         )}
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -203,22 +298,59 @@ export function TeamDetailContent({ id }: Props) {
               </dl>
 
               {/* All rosters */}
-              {rosters && rosters.length > 0 && (
+              {(user || (rosters && rosters.length > 0)) && (
                 <div>
-                  <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
-                    All Rosters
-                    <span className="ml-2 font-normal text-zinc-400 dark:text-zinc-500">({rosters.length})</span>
-                  </h2>
-                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {verifiedRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
-                    {otherRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                      All Rosters
+                      {rosters && (
+                        <span className="ml-2 font-normal text-zinc-400 dark:text-zinc-500">({rosters.length})</span>
+                      )}
+                    </h2>
+                    {user && (
+                      <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                      >
+                        + Add roster
+                      </button>
+                    )}
                   </div>
+
+                  {rosters && rosters.length > 0 ? (
+                    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
+                      {verifiedRosters.map((r) => (
+                        <Link
+                          key={r.id}
+                          href={`/participants/teams/${id}/rosters/${r.id}`}
+                          className="block hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                        >
+                          <RosterRow roster={r} />
+                        </Link>
+                      ))}
+                      {otherRosters.map((r) => (
+                        <Link
+                          key={r.id}
+                          href={`/participants/teams/${id}/rosters/${r.id}`}
+                          className="block hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                        >
+                          <RosterRow roster={r} />
+                        </Link>
+                      ))}
+                    </div>
+                  ) : rosters ? (
+                    <p className="text-sm text-zinc-400 dark:text-zinc-600">No rosters yet.</p>
+                  ) : null}
                 </div>
               )}
             </>
           )}
         </div>
       </main>
+
+      {showCreateModal && (
+        <CreateRosterModal teamId={id} onClose={() => setShowCreateModal(false)} />
+      )}
     </div>
   );
 }
