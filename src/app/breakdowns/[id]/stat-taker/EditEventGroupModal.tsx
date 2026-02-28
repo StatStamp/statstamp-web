@@ -300,6 +300,10 @@ function EventScreen({
   const [gcSec, setGcSec] = useState(secsToInputs(event.game_clock_timestamp).sec);
   const [vidMin, setVidMin] = useState(secsToInputs(event.video_timestamp).min);
   const [vidSec, setVidSec] = useState(secsToInputs(event.video_timestamp).sec);
+  const existingValue = event.metadata && typeof event.metadata === 'object' && 'value' in event.metadata
+    ? String((event.metadata as Record<string, unknown>).value ?? '')
+    : '';
+  const [valueInput, setValueInput] = useState(existingValue);
   const [error, setError] = useState<string | null>(null);
 
   const patchEvent = usePatchEvent();
@@ -340,6 +344,13 @@ function EventScreen({
     const teamIdToSend = parts[0] === 'team' ? parts[1] : null;
 
     try {
+      const parsedValue = valueInput !== '' ? parseFloat(valueInput) : null;
+      const metadataToSend = parsedValue !== null && !isNaN(parsedValue)
+        ? { value: parsedValue }
+        : valueInput === '' && existingValue !== ''
+        ? null  // cleared — send null to remove
+        : undefined; // unchanged, don't send
+
       await patchEvent.mutateAsync({
         breakdownId,
         groupId: group.id,
@@ -348,6 +359,7 @@ function EventScreen({
         breakdown_team_id: teamIdToSend,
         game_clock_timestamp: inputsToSecs(gcMin, gcSec),
         video_timestamp: inputsToSecs(vidMin, vidSec),
+        ...(metadataToSend !== undefined ? { metadata: metadataToSend } : {}),
       });
       onBack();
     } catch {
@@ -413,6 +425,19 @@ function EventScreen({
             ) : null,
           )}
         </select>
+      </div>
+
+      {/* Numeric value */}
+      <div>
+        <label className="text-xs text-zinc-400 block mb-2">Value</label>
+        <input
+          type="number"
+          inputMode="decimal"
+          value={valueInput}
+          onChange={(e) => setValueInput(e.target.value)}
+          placeholder="—"
+          className="w-full rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-3 py-2 focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
       </div>
 
       {/* Game clock override — hidden for lineup events */}
