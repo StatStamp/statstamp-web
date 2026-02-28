@@ -80,6 +80,7 @@ export function ConfirmationView({ breakdownId, players, teams }: Props) {
           event_type_id: qe.eventTypeId,
           breakdown_player_id: qe.participantIsTeam ? null : qe.participantId,
           breakdown_team_id: qe.participantIsTeam ? qe.participantId : null,
+          metadata: qe.value !== null ? { value: qe.value } : undefined,
         });
       }
 
@@ -118,6 +119,9 @@ export function ConfirmationView({ breakdownId, players, teams }: Props) {
                     </p>
                   )}
                 </div>
+                {qe.value !== null && (
+                  <span className="text-xs font-mono text-zinc-400 shrink-0">{qe.value}</span>
+                )}
               </div>
             );
           })}
