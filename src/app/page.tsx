@@ -207,18 +207,24 @@ export default function Home() {
 
           {/* Sign-up CTA (logged-out only) */}
           {showCta && (
-            <div className="mb-10 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div
+              className="mb-10 rounded-xl border px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+              style={{ borderColor: '#1A7A4A', backgroundColor: '#E8F5EE' }}
+            >
               <div>
-                <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
+                <p className="text-sm font-semibold" style={{ color: '#0F5233' }}>
                   StatStamp is free
                 </p>
-                <p className="mt-0.5 text-sm text-indigo-700 dark:text-indigo-300">
+                <p className="mt-0.5 text-sm" style={{ color: '#1A7A4A' }}>
                   Sign up to create breakdowns using custom stat templates.
                 </p>
               </div>
               <Link
                 href="/register"
-                className="shrink-0 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 transition-colors"
+                className="shrink-0 rounded-lg text-white text-sm font-medium px-4 py-2 transition-colors"
+                style={{ backgroundColor: '#1A7A4A' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#22A363')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#1A7A4A')}
               >
                 Sign up free
               </Link>
@@ -245,7 +251,8 @@ export default function Home() {
                     No breakdowns yet.{' '}
                     <Link
                       href="/breakdowns/new"
-                      className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                      className="hover:underline"
+                      style={{ color: '#1A7A4A' }}
                     >
                       Create your first →
                     </Link>
@@ -254,6 +261,40 @@ export default function Home() {
                   'No public breakdowns yet.'
                 )}
               </p>
+            )}
+          </Section>
+
+          {/* Popular Videos */}
+          {(exploreLoading || (explore?.popular_videos && explore.popular_videos.length > 0)) && (
+            <Section title="Popular Videos" href="/videos">
+              {exploreLoading ? (
+                <VideoSkeleton count={4} />
+              ) : (
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {explore!.popular_videos.map((v) => (
+                    <VideoCard key={v.id} video={v} />
+                  ))}
+                </div>
+              )}
+            </Section>
+          )}
+
+          {/* Popular Teams */}
+          <Section title="Popular Teams" href="/participants">
+            {exploreLoading ? (
+              <div className="flex gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-9 w-32 shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
+                ))}
+              </div>
+            ) : explore?.popular_teams && explore.popular_teams.length > 0 ? (
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                {explore.popular_teams.map((t) => (
+                  <TeamChip key={t.id} team={t} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">No teams yet.</p>
             )}
           </Section>
 
@@ -276,25 +317,6 @@ export default function Home() {
             )}
           </Section>
 
-          {/* Popular Teams */}
-          <Section title="Popular Teams" href="/participants">
-            {exploreLoading ? (
-              <div className="flex gap-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-9 w-32 shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
-                ))}
-              </div>
-            ) : explore?.popular_teams && explore.popular_teams.length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                {explore.popular_teams.map((t) => (
-                  <TeamChip key={t.id} team={t} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">No teams yet.</p>
-            )}
-          </Section>
-
           {/* Recent Videos */}
           <Section title="Recent Videos" href="/videos">
             {exploreLoading ? (
@@ -309,19 +331,6 @@ export default function Home() {
               <p className="text-sm text-zinc-500 dark:text-zinc-400">No videos yet.</p>
             )}
           </Section>
-
-          {/* Popular Videos — only shown if there's content worth surfacing */}
-          {!exploreLoading &&
-            explore?.popular_videos &&
-            explore.popular_videos.length > 0 && (
-              <Section title="Popular Videos" href="/videos">
-                <div className="flex gap-4 overflow-x-auto pb-2">
-                  {explore.popular_videos.map((v) => (
-                    <VideoCard key={v.id} video={v} />
-                  ))}
-                </div>
-              </Section>
-            )}
         </div>
       </main>
     </div>

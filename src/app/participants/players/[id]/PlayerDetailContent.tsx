@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlayer } from '@/hooks/players';
+import { usePlayerVideos } from '@/hooks/videos';
+import { VideoCard } from '@/components/VideoCard';
 import type { PlayerRoster } from '@/hooks/teams';
 
 interface Props {
@@ -61,6 +63,7 @@ function RosterRow({ roster }: { roster: PlayerRoster }) {
 export function PlayerDetailContent({ id }: Props) {
   const { user } = useAuth();
   const { data: player, isLoading, isError } = usePlayer(id);
+  const { data: videos } = usePlayerVideos(id);
 
   const canEdit = user && player && user.id === player.created_by_user_id && !player.is_verified;
   const verifiedRosters = player?.rosters?.filter((r) => r.is_verified) ?? [];
@@ -163,6 +166,20 @@ export function PlayerDetailContent({ id }: Props) {
                   <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
                     {verifiedRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
                     {otherRosters.map((r) => <RosterRow key={r.id} roster={r} />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Featured Videos */}
+              {videos && videos.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
+                    Featured Videos
+                  </h2>
+                  <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
+                    {videos.map((v) => (
+                      <VideoCard key={v.id} video={v} />
+                    ))}
                   </div>
                 </div>
               )}
