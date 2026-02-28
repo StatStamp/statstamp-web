@@ -1,10 +1,10 @@
 'use client';
 
-import { CollectionWorkflow } from '@/hooks/collections';
+import { TemplateWorkflow } from '@/hooks/templates';
 import { useTaggingStore } from '@/store/tagging';
 
 interface Props {
-  workflows: CollectionWorkflow[];
+  workflows: TemplateWorkflow[];
 }
 
 export function StepView({ workflows }: Props) {

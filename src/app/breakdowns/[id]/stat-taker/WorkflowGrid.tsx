@@ -1,7 +1,7 @@
 'use client';
 
 import { BreakdownTeam, BreakdownPlayer, BreakdownPeriod } from '@/hooks/breakdowns';
-import { CollectionWorkflow } from '@/hooks/collections';
+import { TemplateWorkflow } from '@/hooks/templates';
 import { EventGroup } from '@/hooks/eventGroups';
 import { useTaggingStore, getPlayersCurrentlyInGame } from '@/store/tagging';
 
@@ -9,7 +9,7 @@ interface Props {
   teams: BreakdownTeam[];
   players: BreakdownPlayer[];
   eventGroups: EventGroup[];
-  workflows: CollectionWorkflow[];
+  workflows: TemplateWorkflow[];
   periods: BreakdownPeriod[];
 }
 

@@ -7,7 +7,7 @@ import { AppLogoIcon } from '@/components/AppLogoIcon';
 import { StatTakerYouTubePlayer } from '@/components/StatTakerYouTubePlayer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBreakdown, useBreakdownTeams, useBreakdownPlayers, useBreakdownPeriods } from '@/hooks/breakdowns';
-import { useCollectionWorkflows } from '@/hooks/collections';
+import { useTemplateWorkflows } from '@/hooks/templates';
 import { useEventGroups } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
 import { WorkflowPanel } from './WorkflowPanel';
@@ -43,7 +43,7 @@ export function StatTakerContent({ id }: Props) {
   const { data: teams = [] } = useBreakdownTeams(id);
   const { data: players = [] } = useBreakdownPlayers(id);
   const { data: periods = [] } = useBreakdownPeriods(id);
-  const { data: workflows = [] } = useCollectionWorkflows(breakdown?.collection_id ?? null);
+  const { data: workflows = [] } = useTemplateWorkflows(breakdown?.template_id ?? null);
   const { data: eventGroups = [] } = useEventGroups(id);
 
   const seekRef = useRef<((seconds: number) => void) | null>(null);

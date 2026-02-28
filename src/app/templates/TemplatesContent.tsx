@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMyCollections } from '@/hooks/collections';
+import { useMyTemplates } from '@/hooks/templates';
 
 function SearchIcon() {
   return (
@@ -24,7 +24,7 @@ function PlusIcon() {
   );
 }
 
-export function CollectionsContent() {
+export function TemplatesContent() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -39,7 +39,7 @@ export function CollectionsContent() {
     if (!authLoading && !user) router.replace('/login');
   }, [authLoading, user, router]);
 
-  const { data: collections, isLoading } = useMyCollections(debouncedSearch, !authLoading && !!user);
+  const { data: templates, isLoading } = useMyTemplates(debouncedSearch, !authLoading && !!user);
 
   if (authLoading || !user) {
     return (
@@ -62,7 +62,7 @@ export function CollectionsContent() {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">My Templates</h1>
             <Link
-              href="/collections/new"
+              href="/templates/new"
               className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 px-3 py-1.5 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors"
             >
               <PlusIcon />
@@ -85,7 +85,7 @@ export function CollectionsContent() {
 
           {isLoading ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
-          ) : !collections || collections.length === 0 ? (
+          ) : !templates || templates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               {debouncedSearch ? (
                 <>
@@ -99,7 +99,7 @@ export function CollectionsContent() {
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1">No templates yet</p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">Create your first template to get started.</p>
                   <Link
-                    href="/collections/new"
+                    href="/templates/new"
                     className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                   >
                     <PlusIcon />
@@ -119,14 +119,14 @@ export function CollectionsContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
-                  {collections.map((c) => (
+                  {templates.map((c) => (
                     <tr
                       key={c.id}
-                      onClick={() => router.push(`/collections/${c.id}`)}
+                      onClick={() => router.push(`/templates/${c.id}`)}
                       className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
                     >
                       <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                        <Link href={`/collections/${c.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                        <Link href={`/templates/${c.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
                           {c.name}
                         </Link>
                       </td>

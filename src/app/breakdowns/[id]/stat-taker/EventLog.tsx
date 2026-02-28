@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { BreakdownPlayer, BreakdownTeam } from '@/hooks/breakdowns';
-import { CollectionWorkflow } from '@/hooks/collections';
+import { TemplateWorkflow } from '@/hooks/templates';
 import { EventGroup, useDeleteEventGroup } from '@/hooks/eventGroups';
-import { useCollectionEventTypes } from '@/hooks/collections';
+import { useTemplateEventTypes } from '@/hooks/templates';
 import { useBreakdown } from '@/hooks/breakdowns';
 
 interface Props {
   breakdownId: string;
   eventGroups: EventGroup[];
-  workflows: CollectionWorkflow[];
+  workflows: TemplateWorkflow[];
   players: BreakdownPlayer[];
   teams: BreakdownTeam[];
   seekRef: React.MutableRefObject<((seconds: number) => void) | null>;
@@ -41,7 +41,7 @@ function TrashIcon() {
 export function EventLog({ breakdownId, eventGroups, workflows, players, teams, seekRef, onTimestampClick }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const { data: breakdown } = useBreakdown(breakdownId);
-  const { data: eventTypes = [] } = useCollectionEventTypes(breakdown?.collection_id ?? null);
+  const { data: eventTypes = [] } = useTemplateEventTypes(breakdown?.template_id ?? null);
   const deleteEventGroup = useDeleteEventGroup();
 
   const lineupWorkflow = workflows.find((w) => w.system_reserved) ?? null;

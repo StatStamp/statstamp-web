@@ -427,9 +427,9 @@ export function BreakdownContent({ id }: Props) {
                     {breakdown.name}
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                    {breakdown.collection_name && (
+                    {breakdown.template_name && (
                       <span className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                        {breakdown.collection_name}
+                        {breakdown.template_name}
                       </span>
                     )}
                     {!breakdown.is_public && (

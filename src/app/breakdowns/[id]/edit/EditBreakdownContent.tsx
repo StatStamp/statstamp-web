@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Nav } from '@/components/Nav';
 import { useVideo } from '@/hooks/videos';
-import { useCollections, useCollectionWorkflows, useCollectionEventTypes, type Collection } from '@/hooks/collections';
+import { useTemplates, useTemplateWorkflows, useTemplateEventTypes, type Template } from '@/hooks/templates';
 import {
-  useCollectionBreakdowns,
+  useTemplateBreakdowns,
   useBreakdown,
   useBreakdownTeams,
   useBreakdownPlayers,
@@ -51,23 +51,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 // ---------------------------------------------------------------------------
-// Collection info modal
+// Template info modal
 // ---------------------------------------------------------------------------
 
-function CollectionInfoModal({
-  collectionId,
-  collectionName,
-  collectionDescription,
+function TemplateInfoModal({
+  templateId,
+  templateName,
+  templateDescription,
   onClose,
 }: {
-  collectionId: string;
-  collectionName: string;
-  collectionDescription: string | null;
+  templateId: string;
+  templateName: string;
+  templateDescription: string | null;
   onClose: () => void;
 }) {
-  const { data: workflows = [], isLoading: workflowsLoading } = useCollectionWorkflows(collectionId);
-  const { data: eventTypes = [], isLoading: eventTypesLoading } = useCollectionEventTypes(collectionId);
-  const { data: breakdowns = [], isLoading: breakdownsLoading } = useCollectionBreakdowns(collectionId);
+  const { data: workflows = [], isLoading: workflowsLoading } = useTemplateWorkflows(templateId);
+  const { data: eventTypes = [], isLoading: eventTypesLoading } = useTemplateEventTypes(templateId);
+  const { data: breakdowns = [], isLoading: breakdownsLoading } = useTemplateBreakdowns(templateId);
 
   const userWorkflows = workflows.filter((w) => !w.system_reserved);
 
@@ -86,9 +86,9 @@ function CollectionInfoModal({
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-lg w-full max-h-[80vh] overflow-y-auto">
         <div className="flex items-start justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
           <div className="min-w-0 pr-4">
-            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{collectionName}</h3>
-            {collectionDescription && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{collectionDescription}</p>
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{templateName}</h3>
+            {templateDescription && (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{templateDescription}</p>
             )}
           </div>
           <button onClick={onClose} className="shrink-0 rounded-md p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" aria-label="Close">
@@ -156,24 +156,24 @@ function CollectionInfoModal({
 }
 
 // ---------------------------------------------------------------------------
-// Collection picker row
+// Template picker row
 // ---------------------------------------------------------------------------
 
-function CollectionRow({
-  collection,
+function TemplateRow({
+  template,
   onSelect,
   onInfo,
 }: {
-  collection: Collection;
+  template: Template;
   onSelect: () => void;
   onInfo: () => void;
 }) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{collection.name}</p>
-        {collection.description && (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{collection.description}</p>
+        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{template.name}</p>
+        {template.description && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{template.description}</p>
         )}
       </div>
       <div className="flex items-center gap-2 ml-4 shrink-0">
@@ -927,7 +927,7 @@ export function EditBreakdownContent({ id }: Props) {
   // Local state for details form (initialized from server data)
   const detailsInitialized = useRef(false);
   const [detailName, setDetailName] = useState('');
-  const [detailCollectionId, setDetailCollectionId] = useState<string | null>(null);
+  const [detailTemplateId, setDetailTemplateId] = useState<string | null>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
@@ -936,7 +936,7 @@ export function EditBreakdownContent({ id }: Props) {
     if (breakdown && !detailsInitialized.current) {
       detailsInitialized.current = true;
       setDetailName(breakdown.name);
-      setDetailCollectionId(breakdown.collection_id);
+      setDetailTemplateId(breakdown.template_id);
     }
   }, [breakdown]);
 
@@ -997,9 +997,9 @@ export function EditBreakdownContent({ id }: Props) {
 
   // Data for details section
   const { data: video, isLoading: videoLoading } = useVideo(breakdown?.video_id ?? '');
-  const { data: collections = [], isLoading: collectionsLoading } = useCollections();
-  const selectedCollection = collections.find((c) => c.id === detailCollectionId) ?? null;
-  const infoCollection = collections.find((c) => c.id === infoModalId) ?? null;
+  const { data: templates = [], isLoading: templatesLoading } = useTemplates();
+  const selectedTemplate = templates.find((c) => c.id === detailTemplateId) ?? null;
+  const infoTemplate = templates.find((c) => c.id === infoModalId) ?? null;
 
   // Auth guard
   const authChecked = useRef(false);
@@ -1026,7 +1026,7 @@ export function EditBreakdownContent({ id }: Props) {
       await updateBreakdown.mutateAsync({
         id,
         name: detailName.trim(),
-        collection_id: detailCollectionId,
+        template_id: detailTemplateId,
       });
       setDetailsDirty(false);
     } catch (e: unknown) {
@@ -1273,30 +1273,30 @@ export function EditBreakdownContent({ id }: Props) {
                 {/* Template */}
                 <div>
                   <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">Template</label>
-                  {selectedCollection ? (
+                  {selectedTemplate ? (
                     <div className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-green-500 shrink-0">
                           <path d="M2 7l4 4 6-7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-current" />
                         </svg>
-                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{selectedCollection.name}</span>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{selectedTemplate.name}</span>
                       </div>
                       <button
-                        onClick={() => { setDetailCollectionId(null); setDetailsDirty(true); }}
+                        onClick={() => { setDetailTemplateId(null); setDetailsDirty(true); }}
                         className="ml-4 shrink-0 rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                       >
                         Change
                       </button>
                     </div>
-                  ) : collectionsLoading ? (
+                  ) : templatesLoading ? (
                     <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading templates…</p>
                   ) : (
                     <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
-                      {collections.map((c) => (
-                        <CollectionRow
+                      {templates.map((c) => (
+                        <TemplateRow
                           key={c.id}
-                          collection={c}
-                          onSelect={() => { setDetailCollectionId(c.id); setDetailsDirty(true); }}
+                          template={c}
+                          onSelect={() => { setDetailTemplateId(c.id); setDetailsDirty(true); }}
                           onInfo={() => setInfoModalId(c.id)}
                         />
                       ))}
@@ -1557,12 +1557,12 @@ export function EditBreakdownContent({ id }: Props) {
         </div>
       </div>
 
-      {/* Collection info modal */}
-      {infoModalId && infoCollection && (
-        <CollectionInfoModal
-          collectionId={infoModalId}
-          collectionName={infoCollection.name}
-          collectionDescription={infoCollection.description}
+      {/* Template info modal */}
+      {infoModalId && infoTemplate && (
+        <TemplateInfoModal
+          templateId={infoModalId}
+          templateName={infoTemplate.name}
+          templateDescription={infoTemplate.description}
           onClose={() => setInfoModalId(null)}
         />
       )}

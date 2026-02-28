@@ -18,7 +18,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
-import type { CollectionWorkflow, WorkflowStep, CollectionEventType } from '@/hooks/collections';
+import type { TemplateWorkflow, WorkflowStep, TemplateEventType } from '@/hooks/templates';
 
 // ── Layout constants ─────────────────────────────────────────────────────────
 
@@ -162,14 +162,14 @@ const edgeTypes = { option: OptionEdge };
 // ── Cycle detection + graph build ────────────────────────────────────────────
 
 function buildNodesAndEdges(
-  workflow: CollectionWorkflow,
-  eventTypes: CollectionEventType[],
+  workflow: TemplateWorkflow,
+  eventTypes: TemplateEventType[],
   isEditing: boolean,
   onStepClick?: (stepId: string) => void,
 ): { nodes: Node[]; edges: Edge[] } {
   const { steps, first_step_id } = workflow;
   const stepMap = new Map<string, WorkflowStep>(steps.map((s) => [s.id, s]));
-  const etMap = new Map<string, CollectionEventType>(eventTypes.map((et) => [et.id, et]));
+  const etMap = new Map<string, TemplateEventType>(eventTypes.map((et) => [et.id, et]));
 
   // BFS traversal to get step order and detect back-edges
   const orderedSteps: WorkflowStep[] = [];
@@ -279,8 +279,8 @@ function buildNodesAndEdges(
 // ── Main component ───────────────────────────────────────────────────────────
 
 interface WorkflowDiagramProps {
-  workflow: CollectionWorkflow;
-  eventTypes: CollectionEventType[];
+  workflow: TemplateWorkflow;
+  eventTypes: TemplateEventType[];
   isEditing?: boolean;
   selectedStepId?: string | null;
   onStepClick?: (stepId: string) => void;

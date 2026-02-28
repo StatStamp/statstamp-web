@@ -8,23 +8,23 @@ import { Nav } from '@/components/Nav';
 import { WorkflowStepPanel } from '@/components/WorkflowStepPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  useCollection,
-  useCollectionWorkflows,
-  useCollectionEventTypes,
-  useCollectionStats,
-  useCreateCollectionStat,
-  useUpdateCollectionStat,
-  useDeleteCollectionStat,
+  useTemplate,
+  useTemplateWorkflows,
+  useTemplateEventTypes,
+  useTemplateStats,
+  useCreateTemplateStat,
+  useUpdateTemplateStat,
+  useDeleteTemplateStat,
   useCreateWorkflow,
   useDeleteWorkflow,
   useCreateWorkflowStep,
-  useDuplicateCollection,
-  useAddCollectionEventType,
-  useRemoveCollectionEventType,
-  type CollectionWorkflow,
-  type CollectionEventType,
-  type CollectionStat,
-} from '@/hooks/collections';
+  useDuplicateTemplate,
+  useAddTemplateEventType,
+  useRemoveTemplateEventType,
+  type TemplateWorkflow,
+  type TemplateEventType,
+  type TemplateStat,
+} from '@/hooks/templates';
 import { useCreateEventType, useSearchPublicEventTypes, type EventType } from '@/hooks/eventTypes';
 
 // Load ReactFlow diagram only client-side (it needs DOM measurements)
@@ -94,11 +94,11 @@ function SearchIcon() {
 // ── Add Event Type Modal ───────────────────────────────────────────────────────
 
 interface AddEventTypeModalProps {
-  collectionId: string;
+  templateId: string;
   onClose: () => void;
 }
 
-function AddEventTypeModal({ collectionId, onClose }: AddEventTypeModalProps) {
+function AddEventTypeModal({ templateId, onClose }: AddEventTypeModalProps) {
   const [mode, setMode] = useState<'search' | 'create'>('search');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -122,9 +122,9 @@ function AddEventTypeModal({ collectionId, onClose }: AddEventTypeModalProps) {
   }, [search]);
 
   const { data: results, isFetching } = useSearchPublicEventTypes(debouncedSearch, mode === 'search');
-  const addExisting = useAddCollectionEventType(collectionId);
+  const addExisting = useAddTemplateEventType(templateId);
   const createEventType = useCreateEventType();
-  const addNew = useAddCollectionEventType(collectionId);
+  const addNew = useAddTemplateEventType(templateId);
 
   const isPending = addExisting.isPending || createEventType.isPending || addNew.isPending;
 
@@ -297,16 +297,16 @@ function AddEventTypeModal({ collectionId, onClose }: AddEventTypeModalProps) {
 // ── Event Types tab ───────────────────────────────────────────────────────────
 
 interface EventTypesTabProps {
-  collectionId: string;
+  templateId: string;
   isOwner: boolean;
-  eventTypes: CollectionEventType[] | undefined;
+  eventTypes: TemplateEventType[] | undefined;
   isLoading: boolean;
   usedInWorkflows: Set<string>;
 }
 
-function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading, usedInWorkflows }: EventTypesTabProps) {
+function EventTypesTab({ templateId, isOwner, eventTypes, isLoading, usedInWorkflows }: EventTypesTabProps) {
   const [addOpen, setAddOpen] = useState(false);
-  const removeEventType = useRemoveCollectionEventType(collectionId);
+  const removeEventType = useRemoveTemplateEventType(templateId);
 
   return (
     <>
@@ -389,7 +389,7 @@ function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading, usedInWor
       {addOpen && (
         <AddEventTypeModal
           key="add-et-modal"
-          collectionId={collectionId}
+          templateId={templateId}
           onClose={() => setAddOpen(false)}
         />
       )}
@@ -400,19 +400,19 @@ function EventTypesTab({ collectionId, isOwner, eventTypes, isLoading, usedInWor
 // ── Individual workflow card ──────────────────────────────────────────────────
 
 interface WorkflowCardProps {
-  workflow: CollectionWorkflow;
-  collectionId: string;
+  workflow: TemplateWorkflow;
+  templateId: string;
   isOwner: boolean;
   inUse: boolean;
-  eventTypes: CollectionEventType[] | undefined;
+  eventTypes: TemplateEventType[] | undefined;
 }
 
-function WorkflowCard({ workflow, collectionId, isOwner, inUse, eventTypes }: WorkflowCardProps) {
+function WorkflowCard({ workflow, templateId, isOwner, inUse, eventTypes }: WorkflowCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const deleteWorkflow = useDeleteWorkflow(collectionId);
-  const createStep = useCreateWorkflowStep(collectionId, workflow.id);
+  const deleteWorkflow = useDeleteWorkflow(templateId);
+  const createStep = useCreateWorkflowStep(templateId, workflow.id);
 
   const handleStepClick = useCallback((stepId: string) => {
     setSelectedStepId((prev) => (prev === stepId ? null : stepId));
@@ -513,7 +513,7 @@ function WorkflowCard({ workflow, collectionId, isOwner, inUse, eventTypes }: Wo
             {editing && isOwner && (
               <WorkflowStepPanel
                 workflow={workflow}
-                collectionId={collectionId}
+                templateId={templateId}
                 eventTypes={eventTypes ?? []}
                 selectedStepId={selectedStepId}
                 onClose={handleClosePanel}
@@ -525,7 +525,7 @@ function WorkflowCard({ workflow, collectionId, isOwner, inUse, eventTypes }: Wo
             {!editing && selectedStepId && (
               <WorkflowStepPanel
                 workflow={workflow}
-                collectionId={collectionId}
+                templateId={templateId}
                 eventTypes={eventTypes ?? []}
                 selectedStepId={selectedStepId}
                 onClose={handleClosePanel}
@@ -542,15 +542,15 @@ function WorkflowCard({ workflow, collectionId, isOwner, inUse, eventTypes }: Wo
 // ── Duplicate modal ───────────────────────────────────────────────────────────
 
 interface DuplicateModalProps {
-  collectionId: string;
+  templateId: string;
   defaultName: string;
   defaultDescription: string;
   onClose: () => void;
 }
 
-function DuplicateModal({ collectionId, defaultName, defaultDescription, onClose }: DuplicateModalProps) {
+function DuplicateModal({ templateId, defaultName, defaultDescription, onClose }: DuplicateModalProps) {
   const router = useRouter();
-  const duplicate = useDuplicateCollection();
+  const duplicate = useDuplicateTemplate();
   const [name, setName] = useState(defaultName);
   const [description, setDescription] = useState(defaultDescription);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -564,8 +564,8 @@ function DuplicateModal({ collectionId, defaultName, defaultDescription, onClose
     e.preventDefault();
     if (!name.trim()) return;
     duplicate.mutate(
-      { id: collectionId, name: name.trim(), description: description.trim() || null },
-      { onSuccess: (newCollection) => router.push(`/collections/${newCollection.id}`) },
+      { id: templateId, name: name.trim(), description: description.trim() || null },
+      { onSuccess: (newTemplate) => router.push(`/templates/${newTemplate.id}`) },
     );
   }
 
@@ -643,8 +643,8 @@ function statTypeBadgeClass(type: string): string {
 function resolveOperandLabel(
   eventTypeId: string | null,
   statId: string | null,
-  eventTypes: CollectionEventType[],
-  allStats: CollectionStat[],
+  eventTypes: TemplateEventType[],
+  allStats: TemplateStat[],
 ): string {
   if (eventTypeId) {
     const et = eventTypes.find((e) => e.id === eventTypeId);
@@ -658,9 +658,9 @@ function resolveOperandLabel(
 }
 
 function renderFormula(
-  stat: CollectionStat,
-  eventTypes: CollectionEventType[],
-  allStats: CollectionStat[],
+  stat: TemplateStat,
+  eventTypes: TemplateEventType[],
+  allStats: TemplateStat[],
 ): string {
   if (stat.type === 'sum') {
     const sorted = [...(stat.addends ?? [])].sort((a, b) => a.display_order - b.display_order);
@@ -700,8 +700,8 @@ function parseOperandStr(val: string): { event_type_id: string | null; stat_id: 
 interface OperandSelectProps {
   value: string;
   onChange: (v: string) => void;
-  eventTypes: CollectionEventType[];
-  otherStats: CollectionStat[];
+  eventTypes: TemplateEventType[];
+  otherStats: TemplateStat[];
 }
 
 function OperandSelect({ value, onChange, eventTypes, otherStats }: OperandSelectProps) {
@@ -737,20 +737,20 @@ function OperandSelect({ value, onChange, eventTypes, otherStats }: OperandSelec
 // ── StatDetailView ────────────────────────────────────────────────────────────
 
 interface StatDetailViewProps {
-  collectionId: string;
-  stat: CollectionStat;
+  templateId: string;
+  stat: TemplateStat;
   isOwner: boolean;
   canEdit: boolean;
   usedInOtherBreakdowns: boolean;
-  eventTypes: CollectionEventType[];
-  allStats: CollectionStat[];
+  eventTypes: TemplateEventType[];
+  allStats: TemplateStat[];
   onBack: () => void;
   onEdit: () => void;
   onDeleted: () => void;
 }
 
 function StatDetailView({
-  collectionId,
+  templateId,
   stat,
   isOwner,
   canEdit,
@@ -762,7 +762,7 @@ function StatDetailView({
   onDeleted,
 }: StatDetailViewProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const deleteStat = useDeleteCollectionStat(collectionId);
+  const deleteStat = useDeleteTemplateStat(templateId);
 
   function handleDelete() {
     deleteStat.mutate(stat.id, { onSuccess: onDeleted });
@@ -874,16 +874,16 @@ interface AddendDraft {
 }
 
 interface StatEditFormProps {
-  collectionId: string;
-  stat: CollectionStat;
-  eventTypes: CollectionEventType[];
-  otherStats: CollectionStat[];
+  templateId: string;
+  stat: TemplateStat;
+  eventTypes: TemplateEventType[];
+  otherStats: TemplateStat[];
   onCancel: () => void;
   onSaved: () => void;
 }
 
-function StatEditForm({ collectionId, stat, eventTypes, otherStats, onCancel, onSaved }: StatEditFormProps) {
-  const updateStat = useUpdateCollectionStat(collectionId);
+function StatEditForm({ templateId, stat, eventTypes, otherStats, onCancel, onSaved }: StatEditFormProps) {
+  const updateStat = useUpdateTemplateStat(templateId);
 
   const [name, setName] = useState(stat.name);
   const [abbreviation, setAbbreviation] = useState(stat.abbreviation ?? '');
@@ -1115,15 +1115,15 @@ function StatEditForm({ collectionId, stat, eventTypes, otherStats, onCancel, on
 // ── CreateStatModal ───────────────────────────────────────────────────────────
 
 interface CreateStatModalProps {
-  collectionId: string;
+  templateId: string;
   nextDisplayOrder: number;
-  eventTypes: CollectionEventType[];
-  existingStats: CollectionStat[];
+  eventTypes: TemplateEventType[];
+  existingStats: TemplateStat[];
   onClose: () => void;
 }
 
-function CreateStatModal({ collectionId, nextDisplayOrder, eventTypes, existingStats, onClose }: CreateStatModalProps) {
-  const createStat = useCreateCollectionStat(collectionId);
+function CreateStatModal({ templateId, nextDisplayOrder, eventTypes, existingStats, onClose }: CreateStatModalProps) {
+  const createStat = useCreateTemplateStat(templateId);
 
   const [type, setType] = useState<'sum' | 'quotient'>('sum');
   const [name, setName] = useState('');
@@ -1361,16 +1361,16 @@ function CreateStatModal({ collectionId, nextDisplayOrder, eventTypes, existingS
 // ── StatCalculationsTab ───────────────────────────────────────────────────────
 
 interface StatCalculationsTabProps {
-  collectionId: string;
+  templateId: string;
   isOwner: boolean;
   usedInOtherBreakdowns: boolean;
-  stats: CollectionStat[] | undefined;
+  stats: TemplateStat[] | undefined;
   isLoading: boolean;
-  eventTypes: CollectionEventType[] | undefined;
+  eventTypes: TemplateEventType[] | undefined;
 }
 
 function StatCalculationsTab({
-  collectionId,
+  templateId,
   isOwner,
   usedInOtherBreakdowns,
   stats,
@@ -1399,7 +1399,7 @@ function StatCalculationsTab({
   if (view === 'edit' && selectedStat) {
     return (
       <StatEditForm
-        collectionId={collectionId}
+        templateId={templateId}
         stat={selectedStat}
         eventTypes={etArr}
         otherStats={visibleStats.filter((s) => s.id !== selectedStat.id)}
@@ -1412,7 +1412,7 @@ function StatCalculationsTab({
   if (view === 'detail' && selectedStat) {
     return (
       <StatDetailView
-        collectionId={collectionId}
+        templateId={templateId}
         stat={selectedStat}
         isOwner={isOwner}
         canEdit={canEdit}
@@ -1492,7 +1492,7 @@ function StatCalculationsTab({
 
       {createOpen && (
         <CreateStatModal
-          collectionId={collectionId}
+          templateId={templateId}
           nextDisplayOrder={visibleStats.length}
           eventTypes={etArr}
           existingStats={visibleStats}
@@ -1505,19 +1505,19 @@ function StatCalculationsTab({
 
 // ── Main page component ───────────────────────────────────────────────────────
 
-export function CollectionContent({ id }: Props) {
+export function TemplateContent({ id }: Props) {
   const { user } = useAuth();
-  const { data: collection, isLoading, isError } = useCollection(id);
-  const { data: workflows, isLoading: workflowsLoading } = useCollectionWorkflows(id);
-  const { data: eventTypes, isLoading: eventTypesLoading } = useCollectionEventTypes(id);
-  const { data: stats, isLoading: statsLoading } = useCollectionStats(id);
+  const { data: template, isLoading, isError } = useTemplate(id);
+  const { data: workflows, isLoading: workflowsLoading } = useTemplateWorkflows(id);
+  const { data: eventTypes, isLoading: eventTypesLoading } = useTemplateEventTypes(id);
+  const { data: stats, isLoading: statsLoading } = useTemplateStats(id);
   const createWorkflow = useCreateWorkflow(id);
   const [dupOpen, setDupOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('event-types');
 
-  const isOwner = user && collection && user.id === collection.user_id;
-  const inUse = (collection?.breakdowns_count ?? 0) > 0;
-  const usedInOtherBreakdowns = (collection?.other_users_breakdowns_count ?? 0) > 0;
+  const isOwner = user && template && user.id === template.user_id;
+  const inUse = (template?.breakdowns_count ?? 0) > 0;
+  const usedInOtherBreakdowns = (template?.other_users_breakdowns_count ?? 0) > 0;
 
   function handleAddWorkflow() {
     createWorkflow.mutate({ name: 'New workflow', display_order: (workflows?.length ?? 0) });
@@ -1551,12 +1551,12 @@ export function CollectionContent({ id }: Props) {
 
           {/* Breadcrumb */}
           <div className="flex items-center gap-3 mb-6">
-            <Link href="/collections" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+            <Link href="/templates" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
               Templates
             </Link>
             <span className="text-zinc-300 dark:text-zinc-600">/</span>
             <span className="text-sm text-zinc-900 dark:text-zinc-100 truncate">
-              {collection?.name ?? '…'}
+              {template?.name ?? '…'}
             </span>
           </div>
 
@@ -1568,11 +1568,11 @@ export function CollectionContent({ id }: Props) {
             <p className="text-sm text-red-600 dark:text-red-400">Could not load template.</p>
           )}
 
-          {collection && (
+          {template && (
             <>
               {/* Title + actions */}
               <div className="flex items-start justify-between gap-4 mb-6">
-                <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{collection.name}</h1>
+                <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{template.name}</h1>
                 <div className="flex items-center gap-2 shrink-0">
                   {user && (
                     <button
@@ -1585,7 +1585,7 @@ export function CollectionContent({ id }: Props) {
                   )}
                   {isOwner && (
                     <Link
-                      href={`/collections/${collection.id}/edit`}
+                      href={`/templates/${template.id}/edit`}
                       className="rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600 transition-colors"
                     >
                       Edit
@@ -1596,17 +1596,17 @@ export function CollectionContent({ id }: Props) {
 
               {/* Details */}
               <dl className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-100 dark:divide-zinc-800 mb-8">
-                {collection.description && (
+                {template.description && (
                   <div className="flex items-start px-4 py-3 gap-4">
                     <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0">Description</dt>
-                    <dd className="text-sm text-zinc-900 dark:text-zinc-100">{collection.description}</dd>
+                    <dd className="text-sm text-zinc-900 dark:text-zinc-100">{template.description}</dd>
                   </div>
                 )}
                 <div className="flex items-center px-4 py-3 gap-4">
                   <dt className="text-sm font-medium text-zinc-500 dark:text-zinc-400 w-32 shrink-0">Visibility</dt>
                   <dd>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${collection.is_public ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}>
-                      {collection.is_public ? 'Public' : 'Private'}
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${template.is_public ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}>
+                      {template.is_public ? 'Public' : 'Private'}
                     </span>
                   </dd>
                 </div>
@@ -1632,7 +1632,7 @@ export function CollectionContent({ id }: Props) {
               {/* Tab content */}
               {activeTab === 'event-types' && (
                 <EventTypesTab
-                  collectionId={id}
+                  templateId={id}
                   isOwner={!!isOwner}
                   eventTypes={eventTypes}
                   isLoading={eventTypesLoading}
@@ -1659,7 +1659,7 @@ export function CollectionContent({ id }: Props) {
                   {/* In-use notice for owners */}
                   {isOwner && inUse && (
                     <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 mb-4 text-sm text-amber-800 dark:text-amber-300">
-                      This template is used in {collection.breakdowns_count} {collection.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Workflows cannot be edited while the template is in use. Duplicate the template to make changes.
+                      This template is used in {template.breakdowns_count} {template.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Workflows cannot be edited while the template is in use. Duplicate the template to make changes.
                     </div>
                   )}
 
@@ -1678,7 +1678,7 @@ export function CollectionContent({ id }: Props) {
                         <WorkflowCard
                           key={workflow.id}
                           workflow={workflow}
-                          collectionId={id}
+                          templateId={id}
                           isOwner={!!isOwner}
                           inUse={inUse}
                           eventTypes={eventTypes}
@@ -1691,7 +1691,7 @@ export function CollectionContent({ id }: Props) {
 
               {activeTab === 'stat-calculations' && (
                 <StatCalculationsTab
-                  collectionId={id}
+                  templateId={id}
                   isOwner={!!isOwner}
                   usedInOtherBreakdowns={usedInOtherBreakdowns}
                   stats={stats}
@@ -1705,11 +1705,11 @@ export function CollectionContent({ id }: Props) {
       </main>
 
       {/* Duplicate modal */}
-      {dupOpen && collection && (
+      {dupOpen && template && (
         <DuplicateModal
-          collectionId={collection.id}
-          defaultName={`${collection.name} (Copy)`}
-          defaultDescription={collection.description ?? ''}
+          templateId={template.id}
+          defaultName={`${template.name} (Copy)`}
+          defaultDescription={template.description ?? ''}
           onClose={() => setDupOpen(false)}
         />
       )}
