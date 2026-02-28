@@ -6,6 +6,8 @@ import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/hooks/teams';
 import { useTeamRosters, useCreateRoster, type Roster } from '@/hooks/rosters';
+import { useTeamVideos } from '@/hooks/videos';
+import { VideoCard } from '@/components/VideoCard';
 
 const LEVEL_LABELS: Record<string, string> = {
   youth: 'Youth',
@@ -147,6 +149,7 @@ export function TeamDetailContent({ id }: Props) {
   const { user } = useAuth();
   const { data: team, isLoading, isError } = useTeam(id);
   const { data: rosters } = useTeamRosters(id);
+  const { data: videos } = useTeamVideos(id);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const canEdit = user && team && user.id === team.created_by_user_id && !team.is_verified;
@@ -341,6 +344,20 @@ export function TeamDetailContent({ id }: Props) {
                   ) : rosters ? (
                     <p className="text-sm text-zinc-400 dark:text-zinc-600">No rosters yet.</p>
                   ) : null}
+                </div>
+              )}
+
+              {/* Featured Videos */}
+              {videos && videos.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
+                    Featured Videos
+                  </h2>
+                  <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
+                    {videos.map((v) => (
+                      <VideoCard key={v.id} video={v} />
+                    ))}
+                  </div>
                 </div>
               )}
             </>

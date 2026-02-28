@@ -80,6 +80,30 @@ export function useVideo(id: string) {
   });
 }
 
+export function useTeamVideos(teamId: string) {
+  return useQuery<Video[]>({
+    queryKey: ['videos', 'team', teamId],
+    queryFn: async () => {
+      const res = await apiFetch<PaginatedResponse<Video>>(
+        `/videos?team_id=${teamId}&order=popular`,
+      );
+      return res.data.slice(0, 6);
+    },
+  });
+}
+
+export function usePlayerVideos(playerId: string) {
+  return useQuery<Video[]>({
+    queryKey: ['videos', 'player', playerId],
+    queryFn: async () => {
+      const res = await apiFetch<PaginatedResponse<Video>>(
+        `/videos?player_id=${playerId}&order=popular`,
+      );
+      return res.data.slice(0, 6);
+    },
+  });
+}
+
 export function useVideoBySourceIdentifier(sourceIdentifier: string | null) {
   return useQuery<Video | null>({
     queryKey: ['videos', 'by-source', sourceIdentifier],
