@@ -105,6 +105,22 @@ function OptionRow({ option, steps, eventTypes, templateId, workflowId, onDelete
     updateOption.mutate({ optionId: option.id, participant_copy_step_id: val || null });
   }
 
+  function handleCollectValueChange(val: boolean) {
+    updateOption.mutate({
+      optionId: option.id,
+      collect_value: val,
+      ...(val ? {} : { value_prompt: null, value_copy_step_id: null }),
+    });
+  }
+
+  function handleValuePromptChange(val: string) {
+    updateOption.mutate({ optionId: option.id, value_prompt: val || null });
+  }
+
+  function handleValueCopyFromStepChange(val: string) {
+    updateOption.mutate({ optionId: option.id, value_copy_step_id: val || null });
+  }
+
   function handleDelete() {
     if (!confirmDel) { setConfirmDel(true); return; }
     deleteOption.mutate(option.id, { onSuccess: onDeleted });
@@ -199,6 +215,52 @@ function OptionRow({ option, steps, eventTypes, templateId, workflowId, onDelete
                 className={selectCls}
               >
                 <option value="">— None —</option>
+                {steps.map((s, i) => (
+                  <option key={s.id} value={s.id}>Step {i + 1}: {s.prompt.slice(0, 35)}{s.prompt.length > 35 ? '…' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Value capture */}
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={option.collect_value}
+            onChange={(e) => handleCollectValueChange(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600 accent-zinc-900 dark:accent-zinc-100"
+          />
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">Collect value 🔢</span>
+        </label>
+      </div>
+
+      {option.collect_value && (
+        <div className="space-y-2 pl-2 border-l-2 border-zinc-200 dark:border-zinc-700">
+          {/* Value prompt */}
+          <div>
+            <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5 uppercase tracking-wide">Value prompt</label>
+            <input
+              type="text"
+              defaultValue={option.value_prompt ?? ''}
+              onBlur={(e) => handleValuePromptChange(e.target.value)}
+              placeholder="How many yards? (optional)"
+              className={inputCls}
+            />
+          </div>
+
+          {/* Copy value from step */}
+          {steps.length > 1 && (
+            <div>
+              <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-0.5 uppercase tracking-wide">Auto-copy value from</label>
+              <select
+                value={option.value_copy_step_id ?? ''}
+                onChange={(e) => handleValueCopyFromStepChange(e.target.value)}
+                className={selectCls}
+              >
+                <option value="">— Ask user —</option>
                 {steps.map((s, i) => (
                   <option key={s.id} value={s.id}>Step {i + 1}: {s.prompt.slice(0, 35)}{s.prompt.length > 35 ? '…' : ''}</option>
                 ))}

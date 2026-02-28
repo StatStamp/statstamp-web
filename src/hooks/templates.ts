@@ -306,6 +306,9 @@ export interface WorkflowOptionInput {
   collect_coordinate?: boolean;
   coordinate_prompt?: string | null;
   coordinate_image_id?: string | null;
+  collect_value?: boolean;
+  value_prompt?: string | null;
+  value_copy_step_id?: string | null;
 }
 
 export function useCreateWorkflowOption(templateId: string, workflowId: string, stepId: string) {
