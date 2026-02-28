@@ -64,6 +64,8 @@ function PlayerToggle({
 
 export function LineupPicker({ breakdownId, teams, players, workflows, isStarters }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [clockMin, setClockMin] = useState('');
+  const [clockSec, setClockSec] = useState('');
 
   const lineupPlayerIds = useTaggingStore((s) => s.lineupPlayerIds);
   const selectedTimestamp = useTaggingStore((s) => s.selectedTimestamp) ?? 0;
@@ -78,9 +80,20 @@ export function LineupPicker({ breakdownId, teams, players, workflows, isStarter
   const lineupWorkflow = workflows.find((w) => w.system_reserved) ?? null;
   const isMatchup = teams.length >= 2;
 
+  function getGameClockSeconds(): number | null {
+    if (isStarters) return null;
+    const m = parseInt(clockMin || '0', 10);
+    const s = parseInt(clockSec || '0', 10);
+    return (isNaN(m) ? 0 : m) * 60 + (isNaN(s) ? 0 : s);
+  }
+
   async function handleSubmit() {
     if (!lineupWorkflow) {
       setSubmitError('Lineup workflow not found.');
+      return;
+    }
+    if (!isStarters && !clockMin && !clockSec) {
+      setSubmitError('Game clock time is required for lineup changes.');
       return;
     }
     setSubmitError(null);
@@ -91,6 +104,7 @@ export function LineupPicker({ breakdownId, teams, players, workflows, isStarter
       const group = await createEventGroup.mutateAsync({
         breakdownId,
         video_timestamp: timestamp,
+        game_clock_timestamp: getGameClockSeconds(),
         workflow_id: lineupWorkflow.id,
       });
 
@@ -161,6 +175,33 @@ export function LineupPicker({ breakdownId, teams, players, workflows, isStarter
           {lineupPlayerIds.length} player{lineupPlayerIds.length !== 1 ? 's' : ''} selected
         </p>
 
+        {!isStarters && (
+          <div>
+            <p className="text-xs text-zinc-400 mb-2">Game clock <span className="text-red-400">*</span></p>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                max="99"
+                placeholder="MM"
+                value={clockMin}
+                onChange={(e) => setClockMin(e.target.value)}
+                className="w-14 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-zinc-500 font-mono">:</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                placeholder="SS"
+                value={clockSec}
+                onChange={(e) => setClockSec(e.target.value)}
+                className="w-14 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+          </div>
+        )}
+
         {submitError && <p className="text-xs text-red-400">{submitError}</p>}
 
         <div className="flex flex-col gap-2">
@@ -226,6 +267,33 @@ export function LineupPicker({ breakdownId, teams, players, workflows, isStarter
       <p className="text-xs text-zinc-500 text-center">
         {lineupPlayerIds.length} player{lineupPlayerIds.length !== 1 ? 's' : ''} selected
       </p>
+
+      {!isStarters && (
+        <div>
+          <p className="text-xs text-zinc-400 mb-2">Game clock <span className="text-red-400">*</span></p>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min="0"
+              max="99"
+              placeholder="MM"
+              value={clockMin}
+              onChange={(e) => setClockMin(e.target.value)}
+              className="w-14 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="text-zinc-500 font-mono">:</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              placeholder="SS"
+              value={clockSec}
+              onChange={(e) => setClockSec(e.target.value)}
+              className="w-14 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-2 py-2 text-center focus:outline-none focus:border-zinc-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+        </div>
+      )}
 
       {submitError && <p className="text-xs text-red-400">{submitError}</p>}
 

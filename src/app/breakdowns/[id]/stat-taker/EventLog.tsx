@@ -6,6 +6,7 @@ import { TemplateWorkflow } from '@/hooks/templates';
 import { EventGroup, useDeleteEventGroup } from '@/hooks/eventGroups';
 import { useTemplateEventTypes } from '@/hooks/templates';
 import { useBreakdown } from '@/hooks/breakdowns';
+import { EditEventGroupModal } from './EditEventGroupModal';
 
 interface Props {
   breakdownId: string;
@@ -38,8 +39,24 @@ function TrashIcon() {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="stroke-current"
+    >
+      <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function EventLog({ breakdownId, eventGroups, workflows, players, teams, seekRef, onTimestampClick }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const { data: breakdown } = useBreakdown(breakdownId);
   const { data: eventTypes = [] } = useTemplateEventTypes(breakdown?.template_id ?? null);
   const deleteEventGroup = useDeleteEventGroup();
@@ -95,6 +112,8 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
     (a, b) => b.video_timestamp - a.video_timestamp,
   );
 
+  const editGroup = editGroupId ? eventGroups.find((g) => g.id === editGroupId) : null;
+
   if (sortedGroups.length === 0) {
     return (
       <div className="flex items-center justify-center h-full px-4 py-8">
@@ -104,6 +123,17 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
   }
 
   return (
+    <>
+    {editGroup && (
+      <EditEventGroupModal
+        group={editGroup}
+        breakdownId={breakdownId}
+        players={players}
+        teams={teams}
+        eventTypes={eventTypes}
+        onClose={() => setEditGroupId(null)}
+      />
+    )}
     <div className="divide-y divide-zinc-800/60">
       {sortedGroups.map((group) => {
         const isLineup = lineupWorkflow && group.workflow_id === lineupWorkflow.id;
@@ -176,7 +206,7 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
               )}
             </div>
 
-            {/* Delete */}
+            {/* Actions */}
             <div className="shrink-0">
               {isConfirmingDelete ? (
                 <div className="flex items-center gap-2">
@@ -195,17 +225,28 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => setConfirmDeleteId(group.id)}
-                  className="text-zinc-700 hover:text-red-400 transition-colors opacity-0 group-hover/row:opacity-100"
-                >
-                  <TrashIcon />
-                </button>
+                <div className="flex items-center gap-2 opacity-0 group-hover/row:opacity-100">
+                  <button
+                    onClick={() => setEditGroupId(group.id)}
+                    className="text-zinc-700 hover:text-zinc-300 transition-colors"
+                    title="Edit group"
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(group.id)}
+                    className="text-zinc-700 hover:text-red-400 transition-colors"
+                    title="Delete group"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               )}
             </div>
           </div>
         );
       })}
     </div>
+    </>
   );
 }
