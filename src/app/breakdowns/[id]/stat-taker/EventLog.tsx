@@ -188,6 +188,12 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
                     {activeEvents.map((e) => {
                       const abbr = getEventTypeAbbreviation(e.event_type_id);
                       const { name, jersey, teamAbbr } = getPlayerMeta(e.breakdown_player_id);
+                      const attributedTeam = !e.breakdown_player_id && e.breakdown_team_id
+                        ? teams.find((t) => t.id === e.breakdown_team_id)
+                        : null;
+                      const attributedTeamName = attributedTeam
+                        ? (attributedTeam.team_abbreviation ?? attributedTeam.team_name ?? null)
+                        : null;
                       return (
                         <span
                           key={e.id}
@@ -198,6 +204,7 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
                           {jersey && <span className="font-mono text-zinc-500">#{jersey}</span>}
                           {name && <span>{name}</span>}
                           {teamAbbr && <span className="text-zinc-500">· {teamAbbr}</span>}
+                          {attributedTeamName && <span className="text-zinc-500">{attributedTeamName}</span>}
                         </span>
                       );
                     })}
