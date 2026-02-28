@@ -42,6 +42,25 @@ function NavLink({
 const buttonLinkClass =
   'flex items-center px-3 py-2 rounded-md text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors';
 
+// Greyed-out nav item for logged-out users — links to /register
+function NavLinkGhosted({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      href="/register"
+      onClick={onClick}
+      className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-zinc-400 dark:text-zinc-600 transition-colors"
+    >
+      {children}
+    </Link>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Shared nav items (used in both desktop sidebar and mobile menu)
 // ---------------------------------------------------------------------------
@@ -61,17 +80,25 @@ function NavItems({ onAction }: { onAction?: () => void }) {
         <NavLink href="/" onClick={onAction}>Explore</NavLink>
         <NavLink href="/participants" onClick={onAction}>Teams &amp; Players</NavLink>
 
-        {user && (
+        <div className="pt-3 pb-1">
+          <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+            My Library
+          </p>
+        </div>
+
+        {user ? (
           <>
-            <div className="pt-3 pb-1">
-              <p className="px-3 text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                My Library
-              </p>
-            </div>
             <NavLink href="/videos" onClick={onAction}>Videos</NavLink>
             <NavLink href="/breakdowns" onClick={onAction}>Breakdowns</NavLink>
             <NavLink href="/templates" onClick={onAction}>Templates</NavLink>
             <NavLink href="/event-types" onClick={onAction}>Event Types</NavLink>
+          </>
+        ) : (
+          <>
+            <NavLinkGhosted onClick={onAction}>Videos</NavLinkGhosted>
+            <NavLinkGhosted onClick={onAction}>Breakdowns</NavLinkGhosted>
+            <NavLinkGhosted onClick={onAction}>Templates</NavLinkGhosted>
+            <NavLinkGhosted onClick={onAction}>Event Types</NavLinkGhosted>
           </>
         )}
       </div>
