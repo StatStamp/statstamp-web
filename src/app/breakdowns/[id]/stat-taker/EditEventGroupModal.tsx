@@ -11,6 +11,7 @@ interface Props {
   players: BreakdownPlayer[];
   teams: BreakdownTeam[];
   eventTypes: TemplateEventType[];
+  isLineup: boolean;
   onClose: () => void;
 }
 
@@ -266,6 +267,7 @@ function EventScreen({
   teams,
   eventTypes,
   breakdownId,
+  isLineup,
   onBack,
   onClose,
 }: {
@@ -275,6 +277,7 @@ function EventScreen({
   teams: BreakdownTeam[];
   eventTypes: TemplateEventType[];
   breakdownId: string;
+  isLineup: boolean;
   onBack: () => void;
   onClose: () => void;
 }) {
@@ -388,7 +391,7 @@ function EventScreen({
           className="w-full rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 px-3 py-2 focus:outline-none focus:border-zinc-500"
         >
           <option value="none">No attribution</option>
-          {teams.length > 0 && (
+          {!isLineup && teams.length > 0 && (
             <optgroup label="Teams">
               {teams.map((team) => (
                 <option key={team.id} value={`team:${team.id}`}>
@@ -412,67 +415,71 @@ function EventScreen({
         </select>
       </div>
 
-      {/* Game clock override */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs text-zinc-400">Game clock override</label>
-          {groupGcDisplay && (
-            <span className="text-xs text-zinc-600">Group: {groupGcDisplay}</span>
-          )}
+      {/* Game clock override — hidden for lineup events */}
+      {!isLineup && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-zinc-400">Game clock override</label>
+            {groupGcDisplay && (
+              <span className="text-xs text-zinc-600">Group: {groupGcDisplay}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <ClockInputs
+              minValue={gcMin}
+              secValue={gcSec}
+              onMinChange={setGcMin}
+              onSecChange={setGcSec}
+            />
+            {(gcMin || gcSec) && (
+              <button
+                onClick={() => { setGcMin(''); setGcSec(''); }}
+                className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-zinc-600 mt-1.5">
+            {gcMin || gcSec
+              ? 'Custom value will be saved.'
+              : groupGcDisplay
+              ? `Inheriting group clock (${groupGcDisplay}).`
+              : 'No clock — inherits from group.'}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ClockInputs
-            minValue={gcMin}
-            secValue={gcSec}
-            onMinChange={setGcMin}
-            onSecChange={setGcSec}
-          />
-          {(gcMin || gcSec) && (
-            <button
-              onClick={() => { setGcMin(''); setGcSec(''); }}
-              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-zinc-600 mt-1.5">
-          {gcMin || gcSec
-            ? 'Custom value will be saved.'
-            : groupGcDisplay
-            ? `Inheriting group clock (${groupGcDisplay}).`
-            : 'No clock — inherits from group.'}
-        </p>
-      </div>
+      )}
 
-      {/* Video timestamp override */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs text-zinc-400">Video time override</label>
-          <span className="text-xs text-zinc-600">Group: {groupVidDisplay}</span>
+      {/* Video timestamp override — hidden for lineup events */}
+      {!isLineup && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-zinc-400">Video time override</label>
+            <span className="text-xs text-zinc-600">Group: {groupVidDisplay}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ClockInputs
+              minValue={vidMin}
+              secValue={vidSec}
+              onMinChange={setVidMin}
+              onSecChange={setVidSec}
+            />
+            {(vidMin || vidSec) && (
+              <button
+                onClick={() => { setVidMin(''); setVidSec(''); }}
+                className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-zinc-600 mt-1.5">
+            {vidMin || vidSec
+              ? 'Custom value will be saved.'
+              : `Inheriting group timestamp (${groupVidDisplay}).`}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ClockInputs
-            minValue={vidMin}
-            secValue={vidSec}
-            onMinChange={setVidMin}
-            onSecChange={setVidSec}
-          />
-          {(vidMin || vidSec) && (
-            <button
-              onClick={() => { setVidMin(''); setVidSec(''); }}
-              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-zinc-600 mt-1.5">
-          {vidMin || vidSec
-            ? 'Custom value will be saved.'
-            : `Inheriting group timestamp (${groupVidDisplay}).`}
-        </p>
-      </div>
+      )}
 
       {error && <p className="text-xs text-red-400">{error}</p>}
 
@@ -495,6 +502,7 @@ export function EditEventGroupModal({
   players,
   teams,
   eventTypes,
+  isLineup,
   onClose,
 }: Props) {
   const [activeEvent, setActiveEvent] = useState<EventGroupEvent | null>(null);
@@ -520,6 +528,7 @@ export function EditEventGroupModal({
             teams={teams}
             eventTypes={eventTypes}
             breakdownId={breakdownId}
+            isLineup={isLineup}
             onBack={() => setActiveEvent(null)}
             onClose={onClose}
           />

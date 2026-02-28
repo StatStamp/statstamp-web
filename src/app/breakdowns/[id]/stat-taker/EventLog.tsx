@@ -131,6 +131,7 @@ export function EventLog({ breakdownId, eventGroups, workflows, players, teams, 
         players={players}
         teams={teams}
         eventTypes={eventTypes}
+        isLineup={!!lineupWorkflow && editGroup.workflow_id === lineupWorkflow.id}
         onClose={() => setEditGroupId(null)}
       />
     )}
