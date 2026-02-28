@@ -216,7 +216,7 @@ export default function Home() {
                   StatStamp is free
                 </p>
                 <p className="mt-0.5 text-sm" style={{ color: '#1A7A4A' }}>
-                  Sign up to create breakdowns using custom stat templates.
+                  Sign up to create breakdowns using your videos.
                 </p>
               </div>
               <Link
