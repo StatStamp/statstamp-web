@@ -100,3 +100,52 @@ export function useDeleteEventGroup() {
     },
   });
 }
+
+export function usePatchEventGroup() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    EventGroup,
+    ApiError,
+    {
+      breakdownId: string;
+      groupId: string;
+      video_timestamp?: number;
+      game_clock_timestamp?: number | null;
+    }
+  >({
+    mutationFn: ({ breakdownId, groupId, ...data }) =>
+      apiFetch<{ data: EventGroup }>(`/breakdowns/${breakdownId}/event-groups/${groupId}`, {
+        method: 'PATCH',
+        body: data,
+      }).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'event-groups'] });
+    },
+  });
+}
+
+export function usePatchEvent() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    EventGroupEvent,
+    ApiError,
+    {
+      breakdownId: string;
+      groupId: string;
+      eventId: string;
+      breakdown_player_id?: string | null;
+      breakdown_team_id?: string | null;
+      video_timestamp?: number | null;
+      game_clock_timestamp?: number | null;
+    }
+  >({
+    mutationFn: ({ breakdownId, groupId, eventId, ...data }) =>
+      apiFetch<{ data: EventGroupEvent }>(
+        `/breakdowns/${breakdownId}/event-groups/${groupId}/events/${eventId}`,
+        { method: 'PATCH', body: data },
+      ).then((r) => r.data),
+    onSuccess: (_, { breakdownId }) => {
+      queryClient.invalidateQueries({ queryKey: ['breakdowns', breakdownId, 'event-groups'] });
+    },
+  });
+}
