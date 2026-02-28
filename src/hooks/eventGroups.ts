@@ -75,6 +75,7 @@ export function useCreateEvent() {
       breakdown_team_id?: string | null;
       video_timestamp?: number | null;
       game_clock_timestamp?: number | null;
+      metadata?: Record<string, unknown>;
     }
   >({
     mutationFn: ({ breakdownId, groupId, ...data }) =>
@@ -137,6 +138,7 @@ export function usePatchEvent() {
       breakdown_team_id?: string | null;
       video_timestamp?: number | null;
       game_clock_timestamp?: number | null;
+      metadata?: Record<string, unknown> | null;
     }
   >({
     mutationFn: ({ breakdownId, groupId, eventId, ...data }) =>

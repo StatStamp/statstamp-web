@@ -7,6 +7,7 @@ export type TaggingPhase =
   | 'idle'          // workflow selector grid
   | 'step'          // answering a workflow step
   | 'participant'   // participant picker
+  | 'value'         // numeric value input
   | 'confirmation'  // review queued events + game clock + submit
   | 'lineup'        // mid-game substitution picker
   | 'period_end';   // end-of-period confirmation
@@ -18,7 +19,8 @@ export interface QueuedEvent {
   participantId: string | null;
   participantName: string | null;
   participantIsTeam: boolean;
-  stepId: string; // which step produced this event (used for participant_copy_step_id lookup)
+  value: number | null;
+  stepId: string; // which step produced this event (used for copy lookups)
 }
 
 interface StateSnapshot {
@@ -28,6 +30,9 @@ interface StateSnapshot {
   awaitingParticipant: boolean;
   participantPrompt: string | null;
   nextStepAfterParticipant: WorkflowStep | null;
+  awaitingValue: boolean;
+  valuePrompt: string | null;
+  nextStepAfterValue: WorkflowStep | null;
   queuedEvents: QueuedEvent[];
   lineupPlayerIds: string[];
   selectedTimestamp: number | null;
@@ -46,6 +51,10 @@ interface TaggingState {
   participantPrompt: string | null;
   nextStepAfterParticipant: WorkflowStep | null;
 
+  awaitingValue: boolean;
+  valuePrompt: string | null;
+  nextStepAfterValue: WorkflowStep | null;
+
   queuedEvents: QueuedEvent[];
 
   gameClockMinutes: string;
@@ -61,6 +70,7 @@ interface TaggingState {
   startWorkflow: (workflow: TemplateWorkflow, timestamp: number) => void;
   selectOption: (option: WorkflowOption, pushHistory?: boolean) => void;
   selectParticipant: (id: string | null, name: string | null, isTeam: boolean) => void;
+  enterValue: (value: number) => void;
   goBack: () => void;
   cancelWorkflow: () => void;
   startLineup: (timestamp: number, currentlyInGameIds: string[]) => void;
@@ -79,6 +89,9 @@ function snapshot(state: TaggingState): StateSnapshot {
     awaitingParticipant: state.awaitingParticipant,
     participantPrompt: state.participantPrompt,
     nextStepAfterParticipant: state.nextStepAfterParticipant,
+    awaitingValue: state.awaitingValue,
+    valuePrompt: state.valuePrompt,
+    nextStepAfterValue: state.nextStepAfterValue,
     queuedEvents: state.queuedEvents.map((e) => ({ ...e })),
     lineupPlayerIds: [...state.lineupPlayerIds],
     selectedTimestamp: state.selectedTimestamp,
@@ -121,6 +134,10 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
   participantPrompt: null,
   nextStepAfterParticipant: null,
 
+  awaitingValue: false,
+  valuePrompt: null,
+  nextStepAfterValue: null,
+
   queuedEvents: [],
 
   gameClockMinutes: '',
@@ -142,6 +159,9 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       awaitingParticipant: false,
       participantPrompt: null,
       nextStepAfterParticipant: null,
+      awaitingValue: false,
+      valuePrompt: null,
+      nextStepAfterValue: null,
     });
   },
 
@@ -190,6 +210,7 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         participantId: null,
         participantName: null,
         participantIsTeam: false,
+        value: null,
         stepId: state.currentStep.id,
       };
 
@@ -205,6 +226,16 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         }
       }
 
+      // Value copy: auto-copy value from a prior step if configured
+      if (option.value_copy_step_id) {
+        const priorEvent = [...newQueuedEvents]
+          .reverse()
+          .find((e) => e.stepId === option.value_copy_step_id);
+        if (priorEvent) {
+          newEvent.value = priorEvent.value;
+        }
+      }
+
       newQueuedEvents.push(newEvent);
     }
 
@@ -214,14 +245,35 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       : null;
 
     // Participant prompt needed (and copy didn't already resolve it)
+    // Also carry awaitingValue so selectParticipant knows to proceed to value phase after.
     if (option.collect_participant && !option.participant_copy_step_id) {
+      const needsValue = option.collect_value && !option.value_copy_step_id;
       set({
         history: newHistory,
         queuedEvents: newQueuedEvents,
         awaitingParticipant: true,
         participantPrompt: option.participant_prompt,
         nextStepAfterParticipant: nextStep,
+        awaitingValue: needsValue,
+        valuePrompt: needsValue ? option.value_prompt : null,
+        nextStepAfterValue: needsValue ? nextStep : null,
         phase: 'participant',
+      });
+      return;
+    }
+
+    // Value prompt needed (participant already handled or not needed)
+    if (option.collect_value && !option.value_copy_step_id) {
+      set({
+        history: newHistory,
+        queuedEvents: newQueuedEvents,
+        awaitingValue: true,
+        valuePrompt: option.value_prompt,
+        nextStepAfterValue: nextStep,
+        awaitingParticipant: false,
+        participantPrompt: null,
+        nextStepAfterParticipant: null,
+        phase: 'value',
       });
       return;
     }
@@ -236,6 +288,9 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         awaitingParticipant: false,
         participantPrompt: null,
         nextStepAfterParticipant: null,
+        awaitingValue: false,
+        valuePrompt: null,
+        nextStepAfterValue: null,
       });
       if (nextStep.options.length === 1) {
         get().selectOption(nextStep.options[0], false);
@@ -248,6 +303,9 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         awaitingParticipant: false,
         participantPrompt: null,
         nextStepAfterParticipant: null,
+        awaitingValue: false,
+        valuePrompt: null,
+        nextStepAfterValue: null,
       });
     }
   },
@@ -265,6 +323,19 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       last.participantIsTeam = isTeam;
     }
 
+    // If value capture is also needed, go to value phase next
+    if (state.awaitingValue) {
+      set({
+        history: newHistory,
+        queuedEvents: newQueuedEvents,
+        awaitingParticipant: false,
+        participantPrompt: null,
+        nextStepAfterParticipant: null,
+        phase: 'value',
+      });
+      return;
+    }
+
     const nextStep = state.nextStepAfterParticipant;
     if (nextStep) {
       set({
@@ -275,6 +346,9 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         awaitingParticipant: false,
         participantPrompt: null,
         nextStepAfterParticipant: null,
+        awaitingValue: false,
+        valuePrompt: null,
+        nextStepAfterValue: null,
       });
       if (nextStep.options.length === 1) {
         get().selectOption(nextStep.options[0], false);
@@ -287,6 +361,44 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
         awaitingParticipant: false,
         participantPrompt: null,
         nextStepAfterParticipant: null,
+        awaitingValue: false,
+        valuePrompt: null,
+        nextStepAfterValue: null,
+      });
+    }
+  },
+
+  enterValue(value) {
+    const state = get();
+    const newHistory = [...state.history, snapshot(state)];
+    const newQueuedEvents = state.queuedEvents.map((e) => ({ ...e }));
+
+    if (newQueuedEvents.length > 0) {
+      newQueuedEvents[newQueuedEvents.length - 1].value = value;
+    }
+
+    const nextStep = state.nextStepAfterValue;
+    if (nextStep) {
+      set({
+        history: newHistory,
+        queuedEvents: newQueuedEvents,
+        currentStep: nextStep,
+        phase: 'step',
+        awaitingValue: false,
+        valuePrompt: null,
+        nextStepAfterValue: null,
+      });
+      if (nextStep.options.length === 1) {
+        get().selectOption(nextStep.options[0], false);
+      }
+    } else {
+      set({
+        history: newHistory,
+        queuedEvents: newQueuedEvents,
+        phase: 'confirmation',
+        awaitingValue: false,
+        valuePrompt: null,
+        nextStepAfterValue: null,
       });
     }
   },
@@ -311,6 +423,9 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       awaitingParticipant: false,
       participantPrompt: null,
       nextStepAfterParticipant: null,
+      awaitingValue: false,
+      valuePrompt: null,
+      nextStepAfterValue: null,
       lineupPlayerIds: [],
       history: [],
     });
@@ -363,6 +478,9 @@ export const useTaggingStore = create<TaggingState>((set, get) => ({
       awaitingParticipant: false,
       participantPrompt: null,
       nextStepAfterParticipant: null,
+      awaitingValue: false,
+      valuePrompt: null,
+      nextStepAfterValue: null,
       lineupPlayerIds: [],
       history: [],
       gameClockMinutes: '',

@@ -8,6 +8,7 @@ import { WorkflowGrid } from './WorkflowGrid';
 import { StepView } from './StepView';
 import { ParticipantPicker } from './ParticipantPicker';
 import { ConfirmationView } from './ConfirmationView';
+import { ValueInputView } from './ValueInputView';
 import { LineupPicker } from './LineupPicker';
 import { PeriodEndView } from './PeriodEndView';
 
@@ -96,6 +97,9 @@ export function WorkflowPanel({ breakdownId, teams, players, eventGroups, workfl
             eventGroups={eventGroups}
             workflows={workflows}
           />
+        )}
+        {phase === 'value' && (
+          <ValueInputView />
         )}
         {phase === 'confirmation' && (
           <ConfirmationView breakdownId={breakdownId} players={players} teams={teams} />
