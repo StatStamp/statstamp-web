@@ -21,8 +21,8 @@ export interface Breakdown {
   video_title?: string | null;
   video_source_identifier?: string | null;
   video_thumbnail_url?: string | null;
-  collection_id: string | null;
-  collection_name?: string | null;
+  template_id: string | null;
+  template_name?: string | null;
   name: string;
   is_public: boolean;
   created_at: string;
@@ -125,16 +125,16 @@ export function useVideoBreakdowns(videoId: string) {
   });
 }
 
-export function useCollectionBreakdowns(collectionId: string | null) {
+export function useTemplateBreakdowns(templateId: string | null) {
   return useQuery<Breakdown[]>({
-    queryKey: ['breakdowns', 'collection', collectionId],
+    queryKey: ['breakdowns', 'template', templateId],
     queryFn: async () => {
       const res = await apiFetch<PaginatedResponse<Breakdown>>(
-        `/breakdowns?collection_id=${collectionId}`,
+        `/breakdowns?template_id=${templateId}`,
       );
       return res.data.slice(0, 5);
     },
-    enabled: collectionId !== null,
+    enabled: templateId !== null,
   });
 }
 
@@ -174,7 +174,7 @@ export function useMyBreakdowns(search: string, enabled = true) {
 
 export function useCreateBreakdown() {
   const queryClient = useQueryClient();
-  return useMutation<Breakdown, ApiError, { name: string; video_id: string; collection_id: string; is_public: boolean }>({
+  return useMutation<Breakdown, ApiError, { name: string; video_id: string; template_id: string; is_public: boolean }>({
     mutationFn: (data) =>
       apiFetch<{ data: Breakdown }>('/breakdowns', { method: 'POST', body: data }).then((r) => r.data),
     onSuccess: (bd) => {
@@ -264,7 +264,7 @@ export function useBreakdownPeriods(breakdownId: string) {
 
 export function useUpdateBreakdown() {
   const queryClient = useQueryClient();
-  return useMutation<Breakdown, ApiError, { id: string; name?: string; is_public?: boolean; video_id?: string | null; collection_id?: string | null }>({
+  return useMutation<Breakdown, ApiError, { id: string; name?: string; is_public?: boolean; video_id?: string | null; template_id?: string | null }>({
     mutationFn: ({ id, ...data }) =>
       apiFetch<{ data: Breakdown }>(`/breakdowns/${id}`, { method: 'PATCH', body: data }).then((r) => r.data),
     onSuccess: (bd) => {

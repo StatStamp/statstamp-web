@@ -161,7 +161,7 @@ export function BreakdownsContent() {
                             </Link>
                           </td>
                           <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                            {b.collection_name ?? <span className="text-zinc-400 dark:text-zinc-600">—</span>}
+                            {b.template_name ?? <span className="text-zinc-400 dark:text-zinc-600">—</span>}
                           </td>
                           <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 max-w-xs truncate">
                             {b.video_title ?? <span className="text-zinc-400 dark:text-zinc-600">—</span>}

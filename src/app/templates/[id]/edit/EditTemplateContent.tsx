@@ -5,19 +5,19 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCollection, useUpdateCollection, useDeleteCollection } from '@/hooks/collections';
+import { useTemplate, useUpdateTemplate, useDeleteTemplate } from '@/hooks/templates';
 import type { ApiError } from '@/lib/api';
 
 interface Props {
   id: string;
 }
 
-export function EditCollectionContent({ id }: Props) {
+export function EditTemplateContent({ id }: Props) {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const { data: collection, isLoading } = useCollection(id);
-  const updateCollection = useUpdateCollection(id);
-  const deleteCollection = useDeleteCollection();
+  const { data: template, isLoading } = useTemplate(id);
+  const updateTemplate = useUpdateTemplate(id);
+  const deleteTemplate = useDeleteTemplate();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -29,17 +29,17 @@ export function EditCollectionContent({ id }: Props) {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (collection) {
-      setName(collection.name);
-      setDescription(collection.description ?? '');
+    if (template) {
+      setName(template.name);
+      setDescription(template.description ?? '');
     }
-  }, [collection]);
+  }, [template]);
 
   useEffect(() => {
-    if (!isLoading && collection && user && user.id !== collection.user_id) {
-      router.replace(`/collections/${id}`);
+    if (!isLoading && template && user && user.id !== template.user_id) {
+      router.replace(`/templates/${id}`);
     }
-  }, [isLoading, collection, user, id, router]);
+  }, [isLoading, template, user, id, router]);
 
   if (authLoading || !user || isLoading) {
     return (
@@ -55,11 +55,11 @@ export function EditCollectionContent({ id }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    updateCollection.mutate(
+    updateTemplate.mutate(
       { name: name.trim(), description: description.trim() || null },
       {
         onSuccess: () => {
-          router.push(`/collections/${id}`);
+          router.push(`/templates/${id}`);
         },
         onError: (err: ApiError) => {
           setError(err.message ?? 'Something went wrong.');
@@ -73,9 +73,9 @@ export function EditCollectionContent({ id }: Props) {
       setConfirmDelete(true);
       return;
     }
-    deleteCollection.mutate(id, {
+    deleteTemplate.mutate(id, {
       onSuccess: () => {
-        router.push('/collections');
+        router.push('/templates');
       },
       onError: (err: ApiError) => {
         setError(err.message ?? 'Something went wrong.');
@@ -91,12 +91,12 @@ export function EditCollectionContent({ id }: Props) {
         <div className="max-w-lg mx-auto px-6 py-8">
 
           <div className="flex items-center gap-3 mb-6">
-            <Link href="/collections" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+            <Link href="/templates" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
               Templates
             </Link>
             <span className="text-zinc-300 dark:text-zinc-600">/</span>
-            <Link href={`/collections/${id}`} className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors truncate">
-              {collection?.name}
+            <Link href={`/templates/${id}`} className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors truncate">
+              {template?.name}
             </Link>
             <span className="text-zinc-300 dark:text-zinc-600">/</span>
             <span className="text-sm text-zinc-900 dark:text-zinc-100">Edit</span>
@@ -134,26 +134,26 @@ export function EditCollectionContent({ id }: Props) {
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Link
-                href={`/collections/${id}`}
+                href={`/templates/${id}`}
                 className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
-                disabled={updateCollection.isPending || !name.trim()}
+                disabled={updateTemplate.isPending || !name.trim()}
                 className="inline-flex items-center rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {updateCollection.isPending ? 'Saving…' : 'Save changes'}
+                {updateTemplate.isPending ? 'Saving…' : 'Save changes'}
               </button>
             </div>
           </form>
 
           <div className="mt-10 rounded-xl border border-red-200 dark:border-red-900 p-4">
             <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Danger zone</h2>
-            {(collection?.breakdowns_count ?? 0) > 0 ? (
+            {(template?.breakdowns_count ?? 0) > 0 ? (
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                This template cannot be deleted while it is used in {collection!.breakdowns_count} {collection!.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Remove those breakdowns first, or duplicate this template.
+                This template cannot be deleted while it is used in {template!.breakdowns_count} {template!.breakdowns_count === 1 ? 'breakdown' : 'breakdowns'}. Remove those breakdowns first, or duplicate this template.
               </p>
             ) : (
               <>
@@ -162,10 +162,10 @@ export function EditCollectionContent({ id }: Props) {
                 </p>
                 <button
                   onClick={handleDelete}
-                  disabled={deleteCollection.isPending}
+                  disabled={deleteTemplate.isPending}
                   className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
                 >
-                  {deleteCollection.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete template'}
+                  {deleteTemplate.isPending ? 'Deleting…' : confirmDelete ? 'Are you sure? Click again to confirm' : 'Delete template'}
                 </button>
               </>
             )}

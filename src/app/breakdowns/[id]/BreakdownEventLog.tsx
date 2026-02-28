@@ -1,7 +1,7 @@
 'use client';
 
 import { useBreakdown, useBreakdownPlayers, useBreakdownTeams } from '@/hooks/breakdowns';
-import { useCollectionEventTypes, useCollectionWorkflows } from '@/hooks/collections';
+import { useTemplateEventTypes, useTemplateWorkflows } from '@/hooks/templates';
 import { EventGroup, EventGroupEvent, useEventGroups } from '@/hooks/eventGroups';
 
 interface Props {
@@ -20,8 +20,8 @@ function formatTimestamp(seconds: number): string {
 export function BreakdownEventLog({ breakdownId, seekRef }: Props) {
   const { data: breakdown } = useBreakdown(breakdownId);
   const { data: eventGroups = [] } = useEventGroups(breakdownId);
-  const { data: workflows = [] } = useCollectionWorkflows(breakdown?.collection_id ?? null);
-  const { data: eventTypes = [] } = useCollectionEventTypes(breakdown?.collection_id ?? null);
+  const { data: workflows = [] } = useTemplateWorkflows(breakdown?.template_id ?? null);
+  const { data: eventTypes = [] } = useTemplateEventTypes(breakdown?.template_id ?? null);
   const { data: players = [] } = useBreakdownPlayers(breakdownId);
   const { data: teams = [] } = useBreakdownTeams(breakdownId);
 

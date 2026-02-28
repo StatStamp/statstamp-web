@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type {
-  CollectionWorkflow,
+  TemplateWorkflow,
   WorkflowStep,
   WorkflowOption,
-  CollectionEventType,
-} from '@/hooks/collections';
+  TemplateEventType,
+} from '@/hooks/templates';
 import {
   useUpdateWorkflowStep,
   useDeleteWorkflowStep,
@@ -15,7 +15,7 @@ import {
   useDeleteWorkflowOption,
   useCreateWorkflowStep,
   useUpdateWorkflow,
-} from '@/hooks/collections';
+} from '@/hooks/templates';
 
 // ── Small icon helpers ────────────────────────────────────────────────────────
 
@@ -48,17 +48,17 @@ function PlusIcon() {
 interface OptionRowProps {
   option: WorkflowOption;
   steps: WorkflowStep[];
-  eventTypes: CollectionEventType[];
-  collectionId: string;
+  eventTypes: TemplateEventType[];
+  templateId: string;
   workflowId: string;
   onDeleted: () => void;
 }
 
-function OptionRow({ option, steps, eventTypes, collectionId, workflowId, onDeleted }: OptionRowProps) {
-  const updateOption = useUpdateWorkflowOption(collectionId, workflowId, option.step_id);
-  const deleteOption = useDeleteWorkflowOption(collectionId, workflowId, option.step_id);
-  const createStep = useCreateWorkflowStep(collectionId, workflowId);
-  const updateWorkflow = useUpdateWorkflow(collectionId, workflowId);
+function OptionRow({ option, steps, eventTypes, templateId, workflowId, onDeleted }: OptionRowProps) {
+  const updateOption = useUpdateWorkflowOption(templateId, workflowId, option.step_id);
+  const deleteOption = useDeleteWorkflowOption(templateId, workflowId, option.step_id);
+  const createStep = useCreateWorkflowStep(templateId, workflowId);
+  const updateWorkflow = useUpdateWorkflow(templateId, workflowId);
 
   const [label, setLabel] = useState(option.label);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -162,7 +162,7 @@ function OptionRow({ option, steps, eventTypes, collectionId, workflowId, onDele
         </select>
       </div>
 
-      {/* Participant collection */}
+      {/* Participant template */}
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-1.5 cursor-pointer select-none">
           <input
@@ -214,15 +214,15 @@ function OptionRow({ option, steps, eventTypes, collectionId, workflowId, onDele
 // ── Workflow-level panel (no step selected) ───────────────────────────────────
 
 interface WorkflowPanelProps {
-  workflow: CollectionWorkflow;
+  workflow: TemplateWorkflow;
   steps: WorkflowStep[];
-  collectionId: string;
+  templateId: string;
   onDeleteWorkflow: () => void;
   onClose: () => void;
 }
 
-function WorkflowPanel({ workflow, steps, collectionId, onDeleteWorkflow, onClose }: WorkflowPanelProps) {
-  const updateWorkflow = useUpdateWorkflow(collectionId, workflow.id);
+function WorkflowPanel({ workflow, steps, templateId, onDeleteWorkflow, onClose }: WorkflowPanelProps) {
+  const updateWorkflow = useUpdateWorkflow(templateId, workflow.id);
   const [name, setName] = useState(workflow.name);
   const [confirmDel, setConfirmDel] = useState(false);
 
@@ -293,16 +293,16 @@ function WorkflowPanel({ workflow, steps, collectionId, onDeleteWorkflow, onClos
 
 interface StepPanelProps {
   step: WorkflowStep;
-  workflow: CollectionWorkflow;
-  collectionId: string;
-  eventTypes: CollectionEventType[];
+  workflow: TemplateWorkflow;
+  templateId: string;
+  eventTypes: TemplateEventType[];
   onClose: () => void;
 }
 
-function StepPanel({ step, workflow, collectionId, eventTypes, onClose }: StepPanelProps) {
-  const updateStep = useUpdateWorkflowStep(collectionId, workflow.id);
-  const deleteStep = useDeleteWorkflowStep(collectionId, workflow.id);
-  const createOption = useCreateWorkflowOption(collectionId, workflow.id, step.id);
+function StepPanel({ step, workflow, templateId, eventTypes, onClose }: StepPanelProps) {
+  const updateStep = useUpdateWorkflowStep(templateId, workflow.id);
+  const deleteStep = useDeleteWorkflowStep(templateId, workflow.id);
+  const createOption = useCreateWorkflowOption(templateId, workflow.id, step.id);
 
   const [prompt, setPrompt] = useState(step.prompt);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -376,7 +376,7 @@ function StepPanel({ step, workflow, collectionId, eventTypes, onClose }: StepPa
                 option={opt}
                 steps={workflow.steps}
                 eventTypes={eventTypes}
-                collectionId={collectionId}
+                templateId={templateId}
                 workflowId={workflow.id}
                 onDeleted={() => setOptions((prev) => prev.filter((o) => o.id !== opt.id))}
               />
@@ -403,8 +403,8 @@ function StepPanel({ step, workflow, collectionId, eventTypes, onClose }: StepPa
 
 interface ReadOnlyStepPanelProps {
   step: WorkflowStep;
-  workflow: CollectionWorkflow;
-  eventTypes: CollectionEventType[];
+  workflow: TemplateWorkflow;
+  eventTypes: TemplateEventType[];
   onClose: () => void;
 }
 
@@ -462,9 +462,9 @@ function ReadOnlyStepPanel({ step, workflow, eventTypes, onClose }: ReadOnlyStep
 // ── Public export ─────────────────────────────────────────────────────────────
 
 export interface WorkflowStepPanelProps {
-  workflow: CollectionWorkflow;
-  collectionId: string;
-  eventTypes: CollectionEventType[];
+  workflow: TemplateWorkflow;
+  templateId: string;
+  eventTypes: TemplateEventType[];
   selectedStepId: string | null;
   onClose: () => void;
   onDeleteWorkflow?: () => void;
@@ -473,7 +473,7 @@ export interface WorkflowStepPanelProps {
 
 export function WorkflowStepPanel({
   workflow,
-  collectionId,
+  templateId,
   eventTypes,
   selectedStepId,
   onClose,
@@ -503,7 +503,7 @@ export function WorkflowStepPanel({
           key={selectedStep.id}
           step={selectedStep}
           workflow={workflow}
-          collectionId={collectionId}
+          templateId={templateId}
           eventTypes={eventTypes}
           onClose={onClose}
         />
@@ -511,7 +511,7 @@ export function WorkflowStepPanel({
         <WorkflowPanel
           workflow={workflow}
           steps={workflow.steps}
-          collectionId={collectionId}
+          templateId={templateId}
           onDeleteWorkflow={onDeleteWorkflow!}
           onClose={onClose}
         />

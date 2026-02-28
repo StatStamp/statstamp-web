@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CollectionWorkflow, WorkflowStep, WorkflowOption } from '@/hooks/collections';
+import { TemplateWorkflow, WorkflowStep, WorkflowOption } from '@/hooks/templates';
 import { EventGroup } from '@/hooks/eventGroups';
 
 export type TaggingPhase =
@@ -23,7 +23,7 @@ export interface QueuedEvent {
 
 interface StateSnapshot {
   phase: TaggingPhase;
-  currentWorkflow: CollectionWorkflow | null;
+  currentWorkflow: TemplateWorkflow | null;
   currentStep: WorkflowStep | null;
   awaitingParticipant: boolean;
   participantPrompt: string | null;
@@ -38,8 +38,8 @@ interface TaggingState {
   videoTimestamp: number;
   selectedTimestamp: number | null;
 
-  workflows: CollectionWorkflow[];
-  currentWorkflow: CollectionWorkflow | null;
+  workflows: TemplateWorkflow[];
+  currentWorkflow: TemplateWorkflow | null;
   currentStep: WorkflowStep | null;
 
   awaitingParticipant: boolean;
@@ -56,9 +56,9 @@ interface TaggingState {
   history: StateSnapshot[];
 
   // Actions
-  initStore: (workflows: CollectionWorkflow[], initialPhase: TaggingPhase) => void;
+  initStore: (workflows: TemplateWorkflow[], initialPhase: TaggingPhase) => void;
   setVideoTimestamp: (t: number) => void;
-  startWorkflow: (workflow: CollectionWorkflow, timestamp: number) => void;
+  startWorkflow: (workflow: TemplateWorkflow, timestamp: number) => void;
   selectOption: (option: WorkflowOption, pushHistory?: boolean) => void;
   selectParticipant: (id: string | null, name: string | null, isTeam: boolean) => void;
   goBack: () => void;
@@ -85,7 +85,7 @@ function snapshot(state: TaggingState): StateSnapshot {
   };
 }
 
-function findStep(workflow: CollectionWorkflow, stepId: string): WorkflowStep | null {
+function findStep(workflow: TemplateWorkflow, stepId: string): WorkflowStep | null {
   return workflow.steps.find((s) => s.id === stepId) ?? null;
 }
 

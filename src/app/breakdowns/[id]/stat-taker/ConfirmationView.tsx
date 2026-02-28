@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useCreateEventGroup, useCreateEvent } from '@/hooks/eventGroups';
 import { useTaggingStore } from '@/store/tagging';
-import { useCollectionEventTypes } from '@/hooks/collections';
+import { useTemplateEventTypes } from '@/hooks/templates';
 import { useBreakdown, BreakdownPlayer, BreakdownTeam } from '@/hooks/breakdowns';
 
 interface Props {
@@ -26,7 +26,7 @@ export function ConfirmationView({ breakdownId, players, teams }: Props) {
   const resetAfterSubmit = useTaggingStore((s) => s.resetAfterSubmit);
 
   const { data: breakdown } = useBreakdown(breakdownId);
-  const { data: eventTypes = [] } = useCollectionEventTypes(breakdown?.collection_id ?? null);
+  const { data: eventTypes = [] } = useTemplateEventTypes(breakdown?.template_id ?? null);
 
   const createEventGroup = useCreateEventGroup();
   const createEvent = useCreateEvent();

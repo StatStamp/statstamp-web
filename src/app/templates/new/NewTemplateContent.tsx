@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCreateCollection } from '@/hooks/collections';
+import { useCreateTemplate } from '@/hooks/templates';
 import type { ApiError } from '@/lib/api';
 
-export function NewCollectionContent() {
+export function NewTemplateContent() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const createCollection = useCreateCollection();
+  const createTemplate = useCreateTemplate();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -35,11 +35,11 @@ export function NewCollectionContent() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    createCollection.mutate(
+    createTemplate.mutate(
       { name: name.trim(), description: description.trim() || null },
       {
-        onSuccess: (collection) => {
-          router.push(`/collections/${collection.id}`);
+        onSuccess: (template) => {
+          router.push(`/templates/${template.id}`);
         },
         onError: (err: ApiError) => {
           setError(err.message ?? 'Something went wrong.');
@@ -56,7 +56,7 @@ export function NewCollectionContent() {
         <div className="max-w-lg mx-auto px-6 py-8">
 
           <div className="flex items-center gap-3 mb-6">
-            <Link href="/collections" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+            <Link href="/templates" className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
               Templates
             </Link>
             <span className="text-zinc-300 dark:text-zinc-600">/</span>
@@ -99,17 +99,17 @@ export function NewCollectionContent() {
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Link
-                href="/collections"
+                href="/templates"
                 className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
-                disabled={createCollection.isPending || !name.trim()}
+                disabled={createTemplate.isPending || !name.trim()}
                 className="inline-flex items-center rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-2 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {createCollection.isPending ? 'Creating…' : 'Create template'}
+                {createTemplate.isPending ? 'Creating…' : 'Create template'}
               </button>
             </div>
           </form>
